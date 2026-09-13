@@ -189,12 +189,16 @@ const KOLAM_NEW_COLUMNS = [
   },
 ];
 
-async function migrateKolamColumns(db) {
-  const existingColumns = await db.getAllAsync('PRAGMA table_info(kolam)');
+const AIR_LOG_NEW_COLUMNS = [
+  { name: 'kejernihan', ddl: "TEXT CHECK (kejernihan IN ('Jernih', 'Agak Keruh', 'Keruh'))" },
+];
+
+async function migrateTableColumns(db, table, columns) {
+  const existingColumns = await db.getAllAsync(`PRAGMA table_info(${table})`);
   const existingNames = new Set(existingColumns.map((c) => c.name));
-  for (const column of KOLAM_NEW_COLUMNS) {
+  for (const column of columns) {
     if (!existingNames.has(column.name)) {
-      await db.execAsync(`ALTER TABLE kolam ADD COLUMN ${column.name} ${column.ddl}`);
+      await db.execAsync(`ALTER TABLE ${table} ADD COLUMN ${column.name} ${column.ddl}`);
     }
   }
 }
@@ -208,7 +212,8 @@ export async function initDatabase() {
 
   const db = await SQLite.openDatabaseAsync(DATABASE_NAME);
   await db.execAsync(CREATE_TABLES_SQL);
-  await migrateKolamColumns(db);
+  await migrateTableColumns(db, 'kolam', KOLAM_NEW_COLUMNS);
+  await migrateTableColumns(db, 'air_log', AIR_LOG_NEW_COLUMNS);
 
   dbInstance = db;
   return dbInstance;

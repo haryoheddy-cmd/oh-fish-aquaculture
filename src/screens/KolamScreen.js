@@ -26,11 +26,14 @@ import {
 } from 'lucide-react-native';
 
 import KolamCard from '../components/KolamCard';
+import StatusIndicator from '../components/StatusIndicator';
 import FormModal, { FormInput, FormChoice } from '../components/FormModal';
 import KolamFormFields, { kolamFormToPayload, kolamToForm, KOLAM_FORM_DEFAULTS } from '../components/KolamFormFields';
 import PakanAlternatifCalc from '../components/PakanAlternatifCalc';
 import HargaJualWidget from '../components/HargaJualWidget';
 import PakanFormModal from '../components/PakanFormModal';
+import WaterQualityModal from '../components/WaterQualityModal';
+import GradingModal from '../components/GradingModal';
 import { COLORS, SPACING } from '../theme';
 import { formatTanggal, todayISODate, toNumber } from '../utils/format';
 import { buildKolamSummary } from '../utils/kolamSummary';
@@ -41,6 +44,8 @@ import {
   createKolam,
   updateKolam,
   createPopulasiLog,
+  getPopulasiLogByKolam,
+  updatePopulasiLog,
   createKematianKonsumsiLog,
   createSamplingLog,
   createPakanLog,
@@ -160,6 +165,8 @@ export default function KolamScreen() {
       setForm({ tanggalMolting: todayISODate(), statusCangkang: 'Lunak/Karantina' });
     } else if (type === 'aerator') {
       setForm({ tanggal: todayISODate(), statusAerator: 'Normal' });
+    } else if (type === 'air') {
+      setForm({ tanggal: todayISODate(), kejernihan: 'Jernih', kondisiCuaca: 'Cerah' });
     } else {
       setForm({ tanggal: todayISODate(), tanggalTebar: todayISODate(), tanggalBeli: todayISODate(), kondisiCuaca: 'Cerah' });
     }
@@ -239,17 +246,62 @@ export default function KolamScreen() {
           tanggal: form.tanggal || todayISODate(),
           phAir: form.phAir ? toNumber(form.phAir) : null,
           suhu: form.suhu ? toNumber(form.suhu) : null,
+          kejernihan: form.kejernihan || null,
           kondisiCuaca: form.kondisiCuaca || null,
           tindakan: form.tindakan || null,
         });
       } else if (activeModal === 'grading') {
+        const jumlahEkor = toNumber(form.jumlahEkor);
+        const tanggalGrading = form.tanggal || todayISODate();
+        const kolamTujuanId = form.idKolamTujuan ?? null;
+
         await createGradingLog({
           idKolamAsal: idKolam,
-          idKolamTujuan: form.idKolamTujuan ?? null,
-          tanggal: form.tanggal || todayISODate(),
-          jumlahEkor: toNumber(form.jumlahEkor),
+          idKolamTujuan: kolamTujuanId,
+          tanggal: tanggalGrading,
+          jumlahEkor,
           ukuran: form.ukuran || null,
         });
+
+        if (kolamTujuanId) {
+          // Grading dengan tujuan = transfer sungguhan: kurangi populasi Kolam Asal
+          // (via kematian_konsumsi_log, sama seperti mekanisme panen) dan tambahkan
+          // ke populasi_log Kolam Tujuan (gabung ke batch aktif bila ada, atau buat
+          // batch baru bila Kolam Tujuan masih kosong).
+          await createKematianKonsumsiLog({
+            idKolam,
+            tanggal: tanggalGrading,
+            jumlahMati: 0,
+            jumlahKonsumsi: jumlahEkor,
+            keterangan: 'Grading/Pindah Kolam',
+          });
+
+          const populasiTujuan = await getPopulasiLogByKolam(kolamTujuanId);
+          const latestTujuan = populasiTujuan[0] || null;
+          if (latestTujuan) {
+            await updatePopulasiLog(latestTujuan.id, {
+              tanggalTebar: latestTujuan.tanggal_tebar,
+              jumlahBibit: latestTujuan.jumlah_bibit + jumlahEkor,
+              ukuranBibitCm: latestTujuan.ukuran_bibit_cm,
+              bobotAwalGram: latestTujuan.bobot_awal_gram,
+              idPenjualBibit: latestTujuan.id_penjual_bibit,
+            });
+          } else {
+            await createPopulasiLog({
+              idKolam: kolamTujuanId,
+              tanggalTebar: tanggalGrading,
+              jumlahBibit: jumlahEkor,
+              ukuranBibitCm: null,
+              bobotAwalGram: null,
+              idPenjualBibit: null,
+            });
+          }
+
+          const kolamTujuanRow = summaries.find((s) => s.kolam.id === kolamTujuanId)?.kolam;
+          if (kolamTujuanRow && kolamTujuanRow.status !== 'aktif') {
+            await updateKolam(kolamTujuanId, { ...kolamFormToPayload(kolamToForm(kolamTujuanRow)), status: 'aktif' });
+          }
+        }
       } else if (activeModal === 'molting') {
         await createMoltingLog({
           idKolam,
@@ -352,50 +404,30 @@ export default function KolamScreen() {
           submitDisabled={saving}
         />
 
-        <FormModal
+        <WaterQualityModal
           visible={activeModal === 'air'}
-          title="Air & Cuaca"
+          form={form}
+          setForm={setForm}
           onClose={closeModal}
           onSubmit={handleSubmitDetailModal}
           submitDisabled={saving}
-        >
-          <FormInput label="Tanggal" value={form.tanggal} onChangeText={(v) => setForm((f) => ({ ...f, tanggal: v }))} />
-          <FormInput label="pH Air" keyboardType="numeric" value={form.phAir} onChangeText={(v) => setForm((f) => ({ ...f, phAir: v }))} />
-          <FormInput label="Suhu (°C)" keyboardType="numeric" value={form.suhu} onChangeText={(v) => setForm((f) => ({ ...f, suhu: v }))} />
-          <FormChoice
-            label="Kondisi Cuaca"
-            value={form.kondisiCuaca}
-            onChange={(v) => setForm((f) => ({ ...f, kondisiCuaca: v }))}
-            options={[
-              { label: '☀️ Cerah', value: 'Cerah' },
-              { label: '🌧️ Hujan', value: 'Hujan' },
-            ]}
-          />
-          <FormInput label="Tindakan yang Dilakukan (opsional)" value={form.tindakan} onChangeText={(v) => setForm((f) => ({ ...f, tindakan: v }))} />
-        </FormModal>
+        />
 
-        <FormModal
+        <GradingModal
           visible={activeModal === 'grading'}
-          title="Pindah/Sebar Lele (Grading)"
+          form={form}
+          setForm={setForm}
           onClose={closeModal}
           onSubmit={handleSubmitDetailModal}
-          submitDisabled={saving}
-        >
-          <FormInput label="Tanggal" value={form.tanggal} onChangeText={(v) => setForm((f) => ({ ...f, tanggal: v }))} />
-          <FormInput label="Jumlah Ekor Dipindah" keyboardType="numeric" value={form.jumlahEkor} onChangeText={(v) => setForm((f) => ({ ...f, jumlahEkor: v }))} />
-          <FormInput label="Ukuran/Grade (opsional)" value={form.ukuran} onChangeText={(v) => setForm((f) => ({ ...f, ukuran: v }))} />
-          <FormChoice
-            label="Pindah ke Kolam"
-            value={form.idKolamTujuan}
-            onChange={(v) => setForm((f) => ({ ...f, idKolamTujuan: v }))}
-            options={[
-              { label: 'Tetap di kolam ini', value: null },
-              ...summaries
-                .filter((s) => s.kolam.id !== selected.kolam.id)
-                .map((s) => ({ label: s.kolam.nama_kolam, value: s.kolam.id })),
-            ]}
-          />
-        </FormModal>
+          submitDisabled={saving || toNumber(form.jumlahEkor) <= 0}
+          kolamAsalLabel={selected.kolam.nama_kolam}
+          kolamTujuanOptions={[
+            { label: 'Sortir di Kolam Ini (Tidak Pindah)', value: null },
+            ...summaries
+              .filter((s) => s.kolam.id !== selected.kolam.id)
+              .map((s) => ({ label: s.kolam.nama_kolam, value: s.kolam.id })),
+          ]}
+        />
 
         <FormModal
           visible={activeModal === 'molting'}
@@ -537,6 +569,17 @@ function KolamDetail({ summary, rekomendasiPakan, activityFeed, onBack, openModa
 
         <KolamCard summary={summary} />
 
+        {summary.kualitasAir ? (
+          <View style={styles.waterQualityBox}>
+            <StatusIndicator level={summary.kualitasAir.level} label={summary.kualitasAir.label} />
+            {summary.kualitasAir.alerts.map((pesan, i) => (
+              <Text key={i} style={styles.waterQualityAlertText}>
+                ⚠️ {pesan}
+              </Text>
+            ))}
+          </View>
+        ) : null}
+
         <View style={styles.pakanCard}>
           <Text style={styles.pakanTitle}>Rekomendasi Pakan Hari Ini</Text>
           <Text style={styles.pakanValue}>
@@ -654,6 +697,18 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginLeft: 4,
     fontSize: 13,
+  },
+  waterQualityBox: {
+    backgroundColor: COLORS.card,
+    borderRadius: 14,
+    padding: SPACING.md,
+    marginBottom: SPACING.lg,
+    gap: SPACING.xs,
+  },
+  waterQualityAlertText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.danger,
   },
   pakanCard: {
     backgroundColor: COLORS.primaryLight,

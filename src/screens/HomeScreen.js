@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { ActivityIndicator, Image, RefreshControl, ScrollView, StyleSheet, Text, View, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Skull, Utensils, NotebookPen, User } from 'lucide-react-native';
+import { Skull, Utensils, NotebookPen, User, Circle, CircleCheckBig } from 'lucide-react-native';
 
 import KolamCard from '../components/KolamCard';
 import StatusIndicator, { stokToLevel } from '../components/StatusIndicator';
@@ -10,7 +10,7 @@ import FormModal, { FormInput } from '../components/FormModal';
 import PakanFormModal from '../components/PakanFormModal';
 import MiniBarChart from '../components/MiniBarChart';
 import { COLORS, SPACING } from '../theme';
-import { formatRupiah, todayISODate, toNumber } from '../utils/format';
+import { formatRupiah, formatTanggal, todayISODate, toNumber } from '../utils/format';
 import { hitungLabaRugiBersih } from '../utils/leleCalculators';
 import { buildKolamSummary } from '../utils/kolamSummary';
 import { subscribeDataChanged, emitDataChanged } from '../utils/eventBus';
@@ -20,11 +20,45 @@ import {
   getAllPenjualan,
   getAllPengeluaranLain,
   getAllPakanLog,
+  getAllAirLog,
+  getAllAeratorLog,
   getProfilUser,
   createKematianKonsumsiLog,
   createPakanLog,
   createSamplingLog,
 } from '../db/queries';
+
+const TREATMENT_KEYWORDS = ['kuras', 'probiotik'];
+const TREATMENT_INTERVAL_HARI = 7;
+
+function hitungTugasHarianHariIni({ summaries, pakanLogs, airLogs, aeratorLogs }) {
+  const hariIni = todayISODate();
+  const kolamAktif = summaries.filter((s) => s.kolam.status === 'aktif');
+  const totalKolamAktif = kolamAktif.length;
+
+  const kolamSudahPakan = new Set(pakanLogs.filter((p) => p.tanggal === hariIni).map((p) => p.id_kolam)).size;
+  const kolamSudahCekAir = new Set(
+    [...airLogs, ...aeratorLogs].filter((l) => l.tanggal === hariIni).map((l) => l.id_kolam)
+  ).size;
+
+  const treatmentTerakhir = airLogs
+    .filter((a) => a.tindakan && TREATMENT_KEYWORDS.some((k) => a.tindakan.toLowerCase().includes(k)))
+    .sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal))[0] || null;
+  const hariSejakTreatment = treatmentTerakhir
+    ? Math.round((new Date(hariIni) - new Date(treatmentTerakhir.tanggal)) / 86400000)
+    : null;
+
+  return {
+    totalKolamAktif,
+    pakan: { done: totalKolamAktif > 0 && kolamSudahPakan >= totalKolamAktif, sudah: kolamSudahPakan },
+    air: { done: totalKolamAktif > 0 && kolamSudahCekAir >= totalKolamAktif, sudah: kolamSudahCekAir },
+    treatment: {
+      done: hariSejakTreatment != null && hariSejakTreatment < TREATMENT_INTERVAL_HARI,
+      terakhir: treatmentTerakhir,
+      hariSejak: hariSejakTreatment,
+    },
+  };
+}
 
 function getSapaanWaktu() {
   const jam = new Date().getHours();
@@ -58,6 +92,7 @@ export default function HomeScreen() {
   const [stokTipis, setStokTipis] = useState([]);
   const [labaRugi, setLabaRugi] = useState({ pendapatan: 0, biaya: 0, labaRugi: 0 });
   const [trenPakan, setTrenPakan] = useState([]);
+  const [tugasHarian, setTugasHarian] = useState(null);
   const [profil, setProfil] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -74,14 +109,17 @@ export default function HomeScreen() {
     const stokList = await getAllStok();
     setStokTipis(stokList.filter((s) => stokToLevel(s.jumlah_stok, s.batas_minimal) !== 'aman'));
 
-    const [semuaPenjualan, semuaPengeluaran, profilUser, pakanLogs] = await Promise.all([
+    const [semuaPenjualan, semuaPengeluaran, profilUser, pakanLogs, airLogs, aeratorLogs] = await Promise.all([
       getAllPenjualan(),
       getAllPengeluaranLain(),
       getProfilUser(),
       getAllPakanLog(),
+      getAllAirLog(),
+      getAllAeratorLog(),
     ]);
     setProfil(profilUser);
     setTrenPakan(buildTrenPakan7Hari(pakanLogs));
+    setTugasHarian(hitungTugasHarianHariIni({ summaries: summaryList, pakanLogs, airLogs, aeratorLogs }));
     const totalPendapatan = semuaPenjualan.reduce((sum, p) => sum + p.total_kg * p.harga_per_kg, 0);
     const totalBiayaPakan = summaryList.reduce((sum, s) => sum + s.totalPakanBiaya, 0);
     const totalBiayaLain = semuaPengeluaran.reduce((sum, p) => sum + p.jumlah_biaya, 0);
@@ -222,6 +260,40 @@ export default function HomeScreen() {
           </View>
         </View>
 
+        {tugasHarian ? (
+          <View style={styles.taskCard}>
+            <Text style={styles.taskCardTitle}>📋 Tugas Hari Ini</Text>
+            <TaskRow
+              done={tugasHarian.pakan.done}
+              label="Beri Pakan Pagi & Sore"
+              subLabel={
+                tugasHarian.totalKolamAktif > 0
+                  ? `${tugasHarian.pakan.sudah}/${tugasHarian.totalKolamAktif} kolam sudah diberi pakan hari ini`
+                  : 'Belum ada kolam aktif'
+              }
+            />
+            <TaskRow
+              done={tugasHarian.air.done}
+              label="Cek Aerator / Air (Setiap Hari)"
+              subLabel={
+                tugasHarian.totalKolamAktif > 0
+                  ? `${tugasHarian.air.sudah}/${tugasHarian.totalKolamAktif} kolam sudah dicek hari ini`
+                  : 'Belum ada kolam aktif'
+              }
+            />
+            <TaskRow
+              done={tugasHarian.treatment.done}
+              label="Kuras / Treatment Probiotik"
+              subLabel={
+                tugasHarian.treatment.terakhir
+                  ? `Terakhir ${tugasHarian.treatment.hariSejak} hari lalu (${formatTanggal(tugasHarian.treatment.terakhir.tanggal)})`
+                  : 'Belum pernah tercatat, sarankan segera dijadwalkan'
+              }
+              isLast
+            />
+          </View>
+        ) : null}
+
         {trenPakan.some((d) => d.value > 0) ? (
           <View style={styles.chartCard}>
             <Text style={styles.chartTitle}>Pengeluaran Pakan 7 Hari Terakhir</Text>
@@ -333,6 +405,19 @@ export default function HomeScreen() {
   );
 }
 
+function TaskRow({ done, label, subLabel, isLast = false }) {
+  const Icon = done ? CircleCheckBig : Circle;
+  return (
+    <View style={[styles.taskRow, !isLast && styles.taskRowBorder]}>
+      <Icon size={20} color={done ? COLORS.success : COLORS.muted} />
+      <View style={styles.taskTextWrap}>
+        <Text style={[styles.taskLabel, done && styles.taskLabelDone]}>{label}</Text>
+        {subLabel ? <Text style={styles.taskSubLabel}>{subLabel}</Text> : null}
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
@@ -414,6 +499,50 @@ const styles = StyleSheet.create({
   labaSub: {
     fontSize: 12,
     color: COLORS.muted,
+  },
+  taskCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: 18,
+    padding: SPACING.lg,
+    marginBottom: SPACING.lg,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
+  },
+  taskCardTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: SPACING.sm,
+  },
+  taskRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: SPACING.sm + 2,
+    gap: SPACING.sm,
+  },
+  taskRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  taskTextWrap: {
+    flex: 1,
+  },
+  taskLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  taskLabelDone: {
+    color: COLORS.muted,
+    textDecorationLine: 'line-through',
+  },
+  taskSubLabel: {
+    fontSize: 11,
+    color: COLORS.muted,
+    marginTop: 2,
   },
   chartCard: {
     backgroundColor: COLORS.card,

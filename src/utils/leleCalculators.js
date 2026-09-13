@@ -487,6 +487,43 @@ export function hitungRekomendasiHargaJual(totalModal, totalBiomassKg, jenisKomo
   };
 }
 
+// ---------- Kualitas air & smart alert ----------
+
+/**
+ * Analisa parameter air (pH, suhu, kejernihan) dan hasilkan level status
+ * beserta pesan rekomendasi otomatis:
+ * - pH < 6.5: air asam, sarankan penambahan Dolomit.
+ * - pH > 8.5: air basa, sarankan pergantian air 20%.
+ * - Kejernihan 'Keruh': naikkan level ke minimal waspada.
+ */
+export function analisaKualitasAir({ phAir = null, suhu = null, kejernihan = null } = {}) {
+  const alerts = [];
+  let level = 'aman';
+
+  if (phAir != null) {
+    if (phAir < 6.5) {
+      alerts.push('Air Asam! Sarankan penambahan Dolomit.');
+      level = 'bahaya';
+    } else if (phAir > 8.5) {
+      alerts.push('Air Basa! Sarankan pergantian air 20%.');
+      level = 'bahaya';
+    } else if (phAir < 6.8 || phAir > 8.2) {
+      level = level === 'bahaya' ? level : 'waspada';
+    }
+  }
+
+  if (kejernihan === 'Keruh') {
+    alerts.push('Air Keruh! Perhatikan sisa pakan & lakukan sifon dasar kolam.');
+    level = level === 'bahaya' ? level : 'waspada';
+  } else if (kejernihan === 'Agak Keruh') {
+    level = level === 'bahaya' ? level : 'waspada';
+  }
+
+  const label = level === 'bahaya' ? 'Kualitas Air Bahaya' : level === 'waspada' ? 'Kualitas Air Waspada' : 'Kualitas Air Aman';
+
+  return { level, label, alerts, phAir, suhu, kejernihan };
+}
+
 /**
  * Status posisi harga pasaran terhadap analisis BEP/harga ideal:
  * 'rugi' (pasaran < BEP), 'untung_tinggi' (pasaran > harga ideal),

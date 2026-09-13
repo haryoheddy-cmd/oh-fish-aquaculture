@@ -235,17 +235,19 @@ export async function createAirLog({
   tanggal,
   phAir = null,
   suhu = null,
+  kejernihan = null,
   kondisiCuaca = null,
   tindakan = null,
 }) {
   const db = getDatabase();
   const result = await db.runAsync(
-    `INSERT INTO air_log (id_kolam, tanggal, ph_air, suhu, kondisi_cuaca, tindakan)
-     VALUES (?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO air_log (id_kolam, tanggal, ph_air, suhu, kejernihan, kondisi_cuaca, tindakan)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
     idKolam,
     tanggal,
     phAir,
     suhu,
+    kejernihan,
     kondisiCuaca,
     tindakan
   );
@@ -257,20 +259,26 @@ export async function getAirLogByKolam(idKolam) {
   return db.getAllAsync('SELECT * FROM air_log WHERE id_kolam = ? ORDER BY tanggal DESC', idKolam);
 }
 
+export async function getAllAirLog() {
+  const db = getDatabase();
+  return db.getAllAsync('SELECT * FROM air_log ORDER BY tanggal DESC');
+}
+
 export async function getAirLogById(id) {
   const db = getDatabase();
   return db.getFirstAsync('SELECT * FROM air_log WHERE id = ?', id);
 }
 
-export async function updateAirLog(id, { tanggal, phAir, suhu, kondisiCuaca, tindakan }) {
+export async function updateAirLog(id, { tanggal, phAir, suhu, kejernihan, kondisiCuaca, tindakan }) {
   const db = getDatabase();
   const result = await db.runAsync(
     `UPDATE air_log
-     SET tanggal = ?, ph_air = ?, suhu = ?, kondisi_cuaca = ?, tindakan = ?
+     SET tanggal = ?, ph_air = ?, suhu = ?, kejernihan = ?, kondisi_cuaca = ?, tindakan = ?
      WHERE id = ?`,
     tanggal,
     phAir,
     suhu,
+    kejernihan,
     kondisiCuaca,
     tindakan,
     id
@@ -649,6 +657,11 @@ export async function createAeratorLog({
 export async function getAeratorLogByKolam(idKolam) {
   const db = getDatabase();
   return db.getAllAsync('SELECT * FROM aerator_log WHERE id_kolam = ? ORDER BY tanggal DESC', idKolam);
+}
+
+export async function getAllAeratorLog() {
+  const db = getDatabase();
+  return db.getAllAsync('SELECT * FROM aerator_log ORDER BY tanggal DESC');
 }
 
 // ---------- profil_user ----------

@@ -16,6 +16,7 @@ import {
   prediksiSiklusMolting,
   hitungProgressPanen,
   estimasiBobotSaatIni,
+  analisaKualitasAir,
 } from './leleCalculators';
 import {
   getPopulasiLogByKolam,
@@ -84,6 +85,9 @@ export async function buildKolamSummary(kolam) {
     : { isAlert: false, pesan: null };
 
   const phLevel = latestAir?.ph_air != null ? phToLevel(latestAir.ph_air) : null;
+  const kualitasAir = latestAir
+    ? analisaKualitasAir({ phAir: latestAir.ph_air, suhu: latestAir.suhu, kejernihan: latestAir.kejernihan })
+    : null;
 
   const latestAerator = aeratorLogs[0] || null;
   const aeratorLevel = latestAerator ? aeratorStatusToLevel(latestAerator.status_aerator) : null;
@@ -185,6 +189,7 @@ export async function buildKolamSummary(kolam) {
     kematianAlert,
     phLevel,
     phLatest: latestAir?.ph_air ?? null,
+    kualitasAir,
     totalPakanBiaya,
     totalTerjualKg,
     totalEkorTerjual,
