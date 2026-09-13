@@ -1,0 +1,216 @@
+import * as SQLite from 'expo-sqlite';
+
+export const DATABASE_NAME = 'misterlele.db';
+
+export const CREATE_TABLES_SQL = `
+PRAGMA journal_mode = WAL;
+PRAGMA foreign_keys = ON;
+
+CREATE TABLE IF NOT EXISTS kolam (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  nama_kolam TEXT NOT NULL,
+  target_panen_gram REAL,
+  status TEXT NOT NULL DEFAULT 'aktif' CHECK (status IN ('aktif', 'panen', 'kosong')),
+  panjang REAL,
+  lebar REAL,
+  diameter REAL,
+  tinggi REAL,
+  bentuk TEXT CHECK (bentuk IN ('Bundar', 'Persegi')),
+  tipe_budidaya TEXT CHECK (tipe_budidaya IN ('Bioflok', 'Kolam Tanah', 'Terpal', 'Beton')),
+  ketinggian_air REAL,
+  debit_air REAL,
+  jenis_komoditas TEXT,
+  is_bertingkat INTEGER NOT NULL DEFAULT 0 CHECK (is_bertingkat IN (0, 1)),
+  jumlah_tingkat INTEGER,
+  jumlah_box_per_tingkat INTEGER,
+  sistem_aerasi TEXT CHECK (sistem_aerasi IN ('Blower Sentral', 'Aerator per Box', 'Venturi', 'Tanpa Aerator'))
+);
+
+CREATE TABLE IF NOT EXISTS penjual_bibit (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  nama_penjual TEXT NOT NULL,
+  alamat TEXT,
+  kontak TEXT,
+  is_rekomended INTEGER NOT NULL DEFAULT 0 CHECK (is_rekomended IN (0, 1)),
+  catatan TEXT
+);
+
+CREATE TABLE IF NOT EXISTS populasi_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id_kolam INTEGER NOT NULL REFERENCES kolam(id) ON DELETE CASCADE,
+  tanggal_tebar TEXT NOT NULL,
+  jumlah_bibit INTEGER NOT NULL,
+  ukuran_bibit_cm REAL,
+  bobot_awal_gram REAL,
+  id_penjual_bibit INTEGER REFERENCES penjual_bibit(id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS kematian_konsumsi_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id_kolam INTEGER NOT NULL REFERENCES kolam(id) ON DELETE CASCADE,
+  tanggal TEXT NOT NULL,
+  jumlah_mati INTEGER NOT NULL DEFAULT 0,
+  jumlah_konsumsi INTEGER NOT NULL DEFAULT 0,
+  keterangan TEXT
+);
+
+CREATE TABLE IF NOT EXISTS sampling_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id_kolam INTEGER NOT NULL REFERENCES kolam(id) ON DELETE CASCADE,
+  tanggal TEXT NOT NULL,
+  berat_rata_rata_gram REAL NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS pakan_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id_kolam INTEGER NOT NULL REFERENCES kolam(id) ON DELETE CASCADE,
+  tanggal TEXT NOT NULL,
+  jenis_pakan TEXT,
+  jumlah_kg REAL NOT NULL,
+  biaya REAL
+);
+
+CREATE TABLE IF NOT EXISTS stok_gudang (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  nama_barang TEXT NOT NULL,
+  jumlah_stok REAL NOT NULL DEFAULT 0,
+  satuan TEXT,
+  batas_minimal REAL
+);
+
+CREATE TABLE IF NOT EXISTS air_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id_kolam INTEGER NOT NULL REFERENCES kolam(id) ON DELETE CASCADE,
+  tanggal TEXT NOT NULL,
+  ph_air REAL,
+  suhu REAL,
+  kondisi_cuaca TEXT,
+  tindakan TEXT
+);
+
+CREATE TABLE IF NOT EXISTS grading_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id_kolam_asal INTEGER NOT NULL REFERENCES kolam(id) ON DELETE CASCADE,
+  id_kolam_tujuan INTEGER REFERENCES kolam(id) ON DELETE SET NULL,
+  tanggal TEXT NOT NULL,
+  jumlah_ekor INTEGER NOT NULL,
+  ukuran TEXT
+);
+
+CREATE TABLE IF NOT EXISTS molting_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id_kolam INTEGER NOT NULL REFERENCES kolam(id) ON DELETE CASCADE,
+  nomor_box TEXT,
+  tanggal_molting TEXT NOT NULL,
+  status_cangkang TEXT NOT NULL CHECK (status_cangkang IN ('Lunak/Karantina', 'Mulai Mengkeras', 'Keras/Normal')),
+  catatan TEXT
+);
+
+CREATE TABLE IF NOT EXISTS aerator_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id_kolam INTEGER NOT NULL REFERENCES kolam(id) ON DELETE CASCADE,
+  tanggal TEXT NOT NULL,
+  status_aerator TEXT NOT NULL DEFAULT 'Normal' CHECK (status_aerator IN ('Normal', 'Maintenance', 'Rusak')),
+  nilai_do_ppm REAL,
+  suhu_celsius REAL
+);
+
+CREATE TABLE IF NOT EXISTS inventory_alat (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  nama_alat TEXT NOT NULL,
+  harga_beli REAL,
+  tanggal_beli TEXT,
+  kondisi TEXT NOT NULL DEFAULT 'baik' CHECK (kondisi IN ('baik', 'rusak', 'perbaikan')),
+  biaya_perbaikan REAL
+);
+
+CREATE TABLE IF NOT EXISTS penjualan (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id_kolam INTEGER NOT NULL REFERENCES kolam(id) ON DELETE CASCADE,
+  nama_pembeli TEXT,
+  kontak_pembeli TEXT,
+  total_kg REAL NOT NULL,
+  harga_per_kg REAL NOT NULL,
+  status_bayar TEXT NOT NULL DEFAULT 'belum_lunas' CHECK (status_bayar IN ('lunas', 'belum_lunas', 'dp')),
+  tanggal TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS pengeluaran_lain (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  kategori TEXT NOT NULL,
+  jumlah_biaya REAL NOT NULL,
+  tanggal TEXT NOT NULL,
+  keterangan TEXT
+);
+
+CREATE TABLE IF NOT EXISTS profil_user (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  nama_panggilan TEXT,
+  nama_peternakan TEXT,
+  foto_profil_uri TEXT
+);
+
+INSERT OR IGNORE INTO profil_user (id) VALUES (1);
+
+CREATE INDEX IF NOT EXISTS idx_populasi_log_id_kolam ON populasi_log(id_kolam);
+CREATE INDEX IF NOT EXISTS idx_kematian_konsumsi_log_id_kolam ON kematian_konsumsi_log(id_kolam);
+CREATE INDEX IF NOT EXISTS idx_sampling_log_id_kolam ON sampling_log(id_kolam);
+CREATE INDEX IF NOT EXISTS idx_pakan_log_id_kolam ON pakan_log(id_kolam);
+CREATE INDEX IF NOT EXISTS idx_air_log_id_kolam ON air_log(id_kolam);
+CREATE INDEX IF NOT EXISTS idx_grading_log_id_kolam_asal ON grading_log(id_kolam_asal);
+CREATE INDEX IF NOT EXISTS idx_grading_log_id_kolam_tujuan ON grading_log(id_kolam_tujuan);
+CREATE INDEX IF NOT EXISTS idx_penjualan_id_kolam ON penjualan(id_kolam);
+CREATE INDEX IF NOT EXISTS idx_molting_log_id_kolam ON molting_log(id_kolam);
+CREATE INDEX IF NOT EXISTS idx_aerator_log_id_kolam ON aerator_log(id_kolam);
+`;
+
+const KOLAM_NEW_COLUMNS = [
+  { name: 'panjang', ddl: 'REAL' },
+  { name: 'lebar', ddl: 'REAL' },
+  { name: 'diameter', ddl: 'REAL' },
+  { name: 'tinggi', ddl: 'REAL' },
+  { name: 'bentuk', ddl: "TEXT CHECK (bentuk IN ('Bundar', 'Persegi'))" },
+  { name: 'tipe_budidaya', ddl: "TEXT CHECK (tipe_budidaya IN ('Bioflok', 'Kolam Tanah', 'Terpal', 'Beton'))" },
+  { name: 'ketinggian_air', ddl: 'REAL' },
+  { name: 'debit_air', ddl: 'REAL' },
+  { name: 'jenis_komoditas', ddl: 'TEXT' },
+  { name: 'is_bertingkat', ddl: "INTEGER NOT NULL DEFAULT 0 CHECK (is_bertingkat IN (0, 1))" },
+  { name: 'jumlah_tingkat', ddl: 'INTEGER' },
+  { name: 'jumlah_box_per_tingkat', ddl: 'INTEGER' },
+  {
+    name: 'sistem_aerasi',
+    ddl: "TEXT CHECK (sistem_aerasi IN ('Blower Sentral', 'Aerator per Box', 'Venturi', 'Tanpa Aerator'))",
+  },
+];
+
+async function migrateKolamColumns(db) {
+  const existingColumns = await db.getAllAsync('PRAGMA table_info(kolam)');
+  const existingNames = new Set(existingColumns.map((c) => c.name));
+  for (const column of KOLAM_NEW_COLUMNS) {
+    if (!existingNames.has(column.name)) {
+      await db.execAsync(`ALTER TABLE kolam ADD COLUMN ${column.name} ${column.ddl}`);
+    }
+  }
+}
+
+let dbInstance = null;
+
+export async function initDatabase() {
+  if (dbInstance) {
+    return dbInstance;
+  }
+
+  const db = await SQLite.openDatabaseAsync(DATABASE_NAME);
+  await db.execAsync(CREATE_TABLES_SQL);
+  await migrateKolamColumns(db);
+
+  dbInstance = db;
+  return dbInstance;
+}
+
+export function getDatabase() {
+  if (!dbInstance) {
+    throw new Error('Database has not been initialized. Call initDatabase() first.');
+  }
+  return dbInstance;
+}
