@@ -6,9 +6,11 @@ import { Plus, Star, Ban } from 'lucide-react-native';
 
 import FormModal, { FormInput, FormChoice } from '../components/FormModal';
 import StatusIndicator, { stokToLevel, kondisiAlatToLevel, srToLevel } from '../components/StatusIndicator';
+import StrukConfirmModal from '../components/StrukConfirmModal';
 import { COLORS, SPACING } from '../theme';
 import { formatRupiah, formatTanggal, todayISODate, toNumber } from '../utils/format';
 import { hitungPopulasiAktif, sumKematianKonsumsi } from '../utils/leleCalculators';
+import { buildStrukData } from '../utils/receiptPrinter';
 import { subscribeDataChanged, emitDataChanged } from '../utils/eventBus';
 import {
   getAllStok,
@@ -21,6 +23,7 @@ import {
   updatePenjualBibit,
   getAllPopulasiLog,
   getKematianKonsumsiLogByKolam,
+  getProfilUser,
 } from '../db/queries';
 
 const SECTIONS = [
@@ -71,12 +74,20 @@ export default function VendorStokScreen() {
   const [form, setForm] = useState({});
   const [editingId, setEditingId] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [profil, setProfil] = useState(null);
+  const [strukData, setStrukData] = useState(null);
 
   const loadData = useCallback(async () => {
-    const [stok, alat, vendor] = await Promise.all([getAllStok(), getAllInventoryAlat(), getAllPenjualBibit()]);
+    const [stok, alat, vendor, profilUser] = await Promise.all([
+      getAllStok(),
+      getAllInventoryAlat(),
+      getAllPenjualBibit(),
+      getProfilUser(),
+    ]);
     setStokList(stok);
     setAlatList(alat);
     setVendorList(vendor);
+    setProfil(profilUser);
     setVendorReputasi(await computeVendorReputasi(vendor));
   }, []);
 
@@ -103,8 +114,10 @@ export default function VendorStokScreen() {
               jumlahStok: String(editItem.jumlah_stok),
               satuan: editItem.satuan || '',
               batasMinimal: editItem.batas_minimal != null ? String(editItem.batas_minimal) : '',
+              jumlahStokSebelumnya: editItem.jumlah_stok,
+              hargaSatuan: '',
             }
-          : { namaBarang: '', jumlahStok: '', satuan: 'kg', batasMinimal: '' }
+          : { namaBarang: '', jumlahStok: '', satuan: 'kg', batasMinimal: '', jumlahStokSebelumnya: 0, hargaSatuan: '' }
       );
     } else if (type === 'alatForm') {
       setForm({ tanggalBeli: todayISODate(), kondisi: 'baik' });
@@ -124,9 +137,10 @@ export default function VendorStokScreen() {
   const handleSubmitStok = async () => {
     setSaving(true);
     try {
+      const jumlahStokBaru = toNumber(form.jumlahStok);
       const payload = {
         namaBarang: form.namaBarang,
-        jumlahStok: toNumber(form.jumlahStok),
+        jumlahStok: jumlahStokBaru,
         satuan: form.satuan || null,
         batasMinimal: form.batasMinimal ? toNumber(form.batasMinimal) : null,
       };
@@ -135,6 +149,29 @@ export default function VendorStokScreen() {
       } else {
         await createStok(payload);
       }
+
+      const hargaSatuan = toNumber(form.hargaSatuan);
+      const jumlahDibeli = Math.max(jumlahStokBaru - (form.jumlahStokSebelumnya || 0), 0);
+      if (hargaSatuan > 0 && jumlahDibeli > 0) {
+        setStrukData(
+          buildStrukData({
+            jenisTransaksi: 'Pembelian Stok',
+            namaPeternakan: profil?.nama_peternakan || profil?.nama_panggilan || 'Mister Lele',
+            namaPihak: 'Toko/Vendor',
+            tanggal: todayISODate(),
+            items: [
+              {
+                nama: form.namaBarang,
+                qty: jumlahDibeli,
+                satuan: form.satuan || '',
+                hargaSatuan,
+                subtotal: jumlahDibeli * hargaSatuan,
+              },
+            ],
+          })
+        );
+      }
+
       closeModal();
       await loadData();
       emitDataChanged();
@@ -327,10 +364,31 @@ export default function VendorStokScreen() {
         submitDisabled={saving || !form.namaBarang}
       >
         <FormInput label="Nama Barang" value={form.namaBarang} onChangeText={(v) => setForm((f) => ({ ...f, namaBarang: v }))} />
-        <FormInput label="Jumlah Stok" keyboardType="numeric" value={form.jumlahStok} onChangeText={(v) => setForm((f) => ({ ...f, jumlahStok: v }))} />
+        <FormInput
+          label="Jumlah Stok"
+          keyboardType="numeric"
+          helperText={editingId ? 'Total stok terbaru setelah ditambah/dikurangi' : undefined}
+          value={form.jumlahStok}
+          onChangeText={(v) => setForm((f) => ({ ...f, jumlahStok: v }))}
+        />
         <FormInput label="Satuan (contoh: kg, sak, botol)" value={form.satuan} onChangeText={(v) => setForm((f) => ({ ...f, satuan: v }))} />
         <FormInput label="Batas Minimal (opsional)" keyboardType="numeric" value={form.batasMinimal} onChangeText={(v) => setForm((f) => ({ ...f, batasMinimal: v }))} />
+        <FormInput
+          label="Harga Satuan Pembelian (Rp, opsional)"
+          keyboardType="numeric"
+          placeholder="Contoh: 12000"
+          helperText="Isi untuk mencetak Nota Pembelian Stok setelah disimpan."
+          value={form.hargaSatuan}
+          onChangeText={(v) => setForm((f) => ({ ...f, hargaSatuan: v }))}
+        />
       </FormModal>
+
+      <StrukConfirmModal
+        visible={!!strukData}
+        data={strukData}
+        onClose={() => setStrukData(null)}
+        title="Pembelian Stok Tersimpan"
+      />
 
       <FormModal
         visible={activeModal === 'alatForm'}

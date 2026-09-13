@@ -2,15 +2,19 @@ import { useCallback, useEffect, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { ActivityIndicator, Alert, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Plus, MessageCircle, CircleCheck, FileDown } from 'lucide-react-native';
+import { Plus, MessageCircle, CircleCheck, FileDown, Printer } from 'lucide-react-native';
 
 import FormModal, { FormInput, FormChoice } from '../components/FormModal';
 import StatusIndicator from '../components/StatusIndicator';
 import HargaJualWidget from '../components/HargaJualWidget';
+import StrukConfirmModal from '../components/StrukConfirmModal';
+import { kolamFormToPayload, kolamToForm } from '../components/KolamFormFields';
 import { COLORS, SPACING } from '../theme';
 import { formatRupiah, formatTanggal, todayISODate, toNumber } from '../utils/format';
 import { hitungHPPPerKg, hitungBEPHargaPerKg, hitungLabaRugiBersih } from '../utils/leleCalculators';
 import { exportLaporanBulananPdf } from '../utils/pdfExporter';
+import { buildStrukData } from '../utils/receiptPrinter';
+import { buildKolamSummary } from '../utils/kolamSummary';
 import { subscribeDataChanged, emitDataChanged } from '../utils/eventBus';
 import {
   getAllKolam,
@@ -19,8 +23,16 @@ import {
   updatePenjualan,
   getAllPengeluaranLain,
   createPengeluaranLain,
+  createKematianKonsumsiLog,
+  updateKolam,
   getPakanLogByKolam,
+  getProfilUser,
 } from '../db/queries';
+
+const JENIS_PANEN_OPTIONS = [
+  { label: 'Panen Parsial (Sebagian)', value: 'parsial' },
+  { label: 'Panen Total (Kosongkan Kolam)', value: 'total' },
+];
 
 const SECTIONS = [
   { key: 'penjualan', label: 'Penjualan' },
@@ -62,13 +74,16 @@ export default function KeuanganScreen() {
   const insets = useSafeAreaInsets();
   const [activeSection, setActiveSection] = useState('penjualan');
   const [kolamList, setKolamList] = useState([]);
+  const [summaries, setSummaries] = useState([]);
   const [penjualanList, setPenjualanList] = useState(null);
   const [pengeluaranList, setPengeluaranList] = useState(null);
+  const [profil, setProfil] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
 
   const [activeModal, setActiveModal] = useState(null);
   const [form, setForm] = useState({});
   const [saving, setSaving] = useState(false);
+  const [strukData, setStrukData] = useState(null);
 
   const [kalkulatorKolamId, setKalkulatorKolamId] = useState(null);
   const [kalkulatorBiayaLain, setKalkulatorBiayaLain] = useState('0');
@@ -76,14 +91,17 @@ export default function KeuanganScreen() {
   const [exporting, setExporting] = useState(false);
 
   const loadData = useCallback(async () => {
-    const [kolam, penjualan, pengeluaran] = await Promise.all([
+    const [kolam, penjualan, pengeluaran, profilUser] = await Promise.all([
       getAllKolam(),
       getAllPenjualan(),
       getAllPengeluaranLain(),
+      getProfilUser(),
     ]);
     setKolamList(kolam);
     setPenjualanList(penjualan);
     setPengeluaranList(pengeluaran);
+    setProfil(profilUser);
+    setSummaries(await Promise.all(kolam.map(buildKolamSummary)));
     if (!kalkulatorKolamId && kolam.length > 0) {
       setKalkulatorKolamId(kolam[0].id);
     }
@@ -104,9 +122,16 @@ export default function KeuanganScreen() {
   };
 
   const kolamNama = (id) => kolamList.find((k) => k.id === id)?.nama_kolam ?? '-';
+  const summaryKolam = (id) => summaries.find((s) => s.kolam.id === id) ?? null;
 
   const openModal = (type) => {
-    setForm({ tanggal: todayISODate(), statusBayar: 'belum_lunas', idKolam: kolamList[0]?.id ?? null });
+    setForm({
+      tanggal: todayISODate(),
+      statusBayar: 'belum_lunas',
+      idKolam: kolamList[0]?.id ?? null,
+      jenisPanen: 'parsial',
+      jumlahEkorTerjual: '',
+    });
     setActiveModal(type);
   };
 
@@ -116,23 +141,88 @@ export default function KeuanganScreen() {
   };
 
   const handleSubmitPenjualan = async () => {
+    const kolamTerpilih = kolamList.find((k) => k.id === form.idKolam);
+    const summaryTerpilih = summaryKolam(form.idKolam);
+    const populasiSaatIni = summaryTerpilih?.populasiAktif ?? 0;
+    const isPanenTotal = form.jenisPanen === 'total';
+    const jumlahEkorTerjual = isPanenTotal ? populasiSaatIni : toNumber(form.jumlahEkorTerjual);
+
+    if (!kolamTerpilih || jumlahEkorTerjual <= 0) return;
+
     setSaving(true);
     try {
+      const totalKg = toNumber(form.totalKg);
+      const hargaPerKg = toNumber(form.hargaPerKg);
+      const tanggal = form.tanggal || todayISODate();
+
       await createPenjualan({
         idKolam: form.idKolam,
         namaPembeli: form.namaPembeli || null,
         kontakPembeli: form.kontakPembeli || null,
-        totalKg: toNumber(form.totalKg),
-        hargaPerKg: toNumber(form.hargaPerKg),
+        totalKg,
+        hargaPerKg,
         statusBayar: form.statusBayar || 'belum_lunas',
-        tanggal: form.tanggal || todayISODate(),
+        tanggal,
       });
+
+      await createKematianKonsumsiLog({
+        idKolam: form.idKolam,
+        tanggal,
+        jumlahMati: 0,
+        jumlahKonsumsi: jumlahEkorTerjual,
+        keterangan: isPanenTotal ? 'Panen Total' : 'Panen Parsial',
+      });
+
+      if (isPanenTotal) {
+        await updateKolam(kolamTerpilih.id, { ...kolamFormToPayload(kolamToForm(kolamTerpilih)), status: 'panen' });
+      }
+
+      setStrukData(
+        buildStrukData({
+          jenisTransaksi: 'Penjualan',
+          namaPeternakan: profil?.nama_peternakan || profil?.nama_panggilan || 'Mister Lele',
+          namaPihak: form.namaPembeli || 'Pembeli',
+          tanggal,
+          catatan: `${kolamTerpilih.nama_kolam} · ${isPanenTotal ? 'Panen Total' : 'Panen Parsial'}`,
+          items: [
+            {
+              nama: `Ikan ${kolamTerpilih.nama_kolam}`,
+              qty: totalKg,
+              satuan: 'kg',
+              hargaSatuan: hargaPerKg,
+              subtotal: totalKg * hargaPerKg,
+            },
+          ],
+        })
+      );
+
       closeModal();
       await loadData();
       emitDataChanged();
     } finally {
       setSaving(false);
     }
+  };
+
+  const cetakUlangStrukPenjualan = (p) => {
+    setStrukData(
+      buildStrukData({
+        jenisTransaksi: 'Penjualan',
+        namaPeternakan: profil?.nama_peternakan || profil?.nama_panggilan || 'Mister Lele',
+        namaPihak: p.nama_pembeli || 'Pembeli',
+        tanggal: p.tanggal,
+        catatan: kolamNama(p.id_kolam),
+        items: [
+          {
+            nama: `Ikan ${kolamNama(p.id_kolam)}`,
+            qty: p.total_kg,
+            satuan: 'kg',
+            hargaSatuan: p.harga_per_kg,
+            subtotal: p.total_kg * p.harga_per_kg,
+          },
+        ],
+      })
+    );
   };
 
   const handleSubmitPengeluaran = async () => {
@@ -266,18 +356,23 @@ export default function KeuanganScreen() {
                 <Text style={styles.cardValue}>
                   {p.total_kg} kg x {formatRupiah(p.harga_per_kg)} = {formatRupiah(p.total_kg * p.harga_per_kg)}
                 </Text>
-                {p.status_bayar !== 'lunas' && (
-                  <View style={styles.cardActions}>
-                    <Pressable style={styles.waButton} onPress={() => openTagihanWa(p, kolamNama(p.id_kolam))}>
-                      <MessageCircle size={16} color="#FFFFFF" />
-                      <Text style={styles.waButtonText}>Tagih via WA</Text>
-                    </Pressable>
-                    <Pressable style={styles.lunasButton} onPress={() => tandaiLunas(p)}>
-                      <CircleCheck size={16} color={COLORS.success} />
-                      <Text style={styles.lunasButtonText}>Tandai Lunas</Text>
-                    </Pressable>
-                  </View>
-                )}
+                <View style={styles.cardActions}>
+                  {p.status_bayar !== 'lunas' && (
+                    <>
+                      <Pressable style={styles.waButton} onPress={() => openTagihanWa(p, kolamNama(p.id_kolam))}>
+                        <MessageCircle size={16} color="#FFFFFF" />
+                        <Text style={styles.waButtonText}>Tagih via WA</Text>
+                      </Pressable>
+                      <Pressable style={styles.lunasButton} onPress={() => tandaiLunas(p)}>
+                        <CircleCheck size={16} color={COLORS.success} />
+                        <Text style={styles.lunasButtonText}>Tandai Lunas</Text>
+                      </Pressable>
+                    </>
+                  )}
+                  <Pressable style={styles.printIconButton} onPress={() => cetakUlangStrukPenjualan(p)}>
+                    <Printer size={16} color={COLORS.muted} />
+                  </Pressable>
+                </View>
               </View>
             ))}
           </>
@@ -366,10 +461,16 @@ export default function KeuanganScreen() {
 
       <FormModal
         visible={activeModal === 'penjualan'}
-        title="Catat Penjualan"
+        title="Catat Penjualan / Panen Ikan"
         onClose={closeModal}
         onSubmit={handleSubmitPenjualan}
-        submitDisabled={saving}
+        submitDisabled={
+          saving ||
+          !form.idKolam ||
+          toNumber(form.totalKg) <= 0 ||
+          toNumber(form.hargaPerKg) <= 0 ||
+          (form.jenisPanen !== 'total' && toNumber(form.jumlahEkorTerjual) <= 0)
+        }
       >
         <FormChoice
           label="Kolam"
@@ -377,6 +478,35 @@ export default function KeuanganScreen() {
           onChange={(v) => setForm((f) => ({ ...f, idKolam: v }))}
           options={kolamList.map((k) => ({ label: k.nama_kolam, value: k.id }))}
         />
+        {form.idKolam ? (
+          <Text style={styles.populasiHint}>
+            Populasi saat ini: {summaryKolam(form.idKolam)?.populasiAktif ?? 0} ekor ·{' '}
+            {(summaryKolam(form.idKolam)?.biomassaKg ?? 0).toFixed(1)} kg
+          </Text>
+        ) : null}
+
+        <FormChoice
+          label="Jenis Panen"
+          value={form.jenisPanen}
+          onChange={(v) => setForm((f) => ({ ...f, jenisPanen: v }))}
+          options={JENIS_PANEN_OPTIONS}
+        />
+        {form.jenisPanen === 'total' ? (
+          <Text style={styles.populasiHint}>
+            Seluruh sisa populasi ({summaryKolam(form.idKolam)?.populasiAktif ?? 0} ekor) akan dicatat terjual/panen dan
+            kolam ditandai kosong.
+          </Text>
+        ) : (
+          <FormInput
+            label="Jumlah Ekor Terjual"
+            keyboardType="numeric"
+            placeholder="Contoh: 150"
+            helperText="Ekor yang diambil pada panen parsial ini, sisanya tetap di kolam."
+            value={form.jumlahEkorTerjual}
+            onChangeText={(v) => setForm((f) => ({ ...f, jumlahEkorTerjual: v }))}
+          />
+        )}
+
         <FormInput label="Nama Pembeli" value={form.namaPembeli} onChangeText={(v) => setForm((f) => ({ ...f, namaPembeli: v }))} />
         <FormInput label="No. WA Pembeli" keyboardType="phone-pad" value={form.kontakPembeli} onChangeText={(v) => setForm((f) => ({ ...f, kontakPembeli: v }))} />
         <FormInput label="Total (kg)" keyboardType="numeric" value={form.totalKg} onChangeText={(v) => setForm((f) => ({ ...f, totalKg: v }))} />
@@ -393,6 +523,8 @@ export default function KeuanganScreen() {
           ]}
         />
       </FormModal>
+
+      <StrukConfirmModal visible={!!strukData} data={strukData} onClose={() => setStrukData(null)} />
 
       <FormModal
         visible={activeModal === 'pengeluaran'}
@@ -502,6 +634,20 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   lunasButtonText: { color: COLORS.success, fontWeight: '700', fontSize: 12, marginLeft: 6 },
+  printIconButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F1F3F2',
+  },
+  populasiHint: {
+    fontSize: 12,
+    color: COLORS.muted,
+    marginTop: -6,
+    marginBottom: SPACING.md,
+  },
   sectionTitle: { fontSize: 14, fontWeight: '700', color: COLORS.text, marginBottom: SPACING.sm },
   hasilWrapper: { marginTop: SPACING.md },
   hasilCard: {

@@ -27,6 +27,7 @@ export default function KolamCard({ summary, onPress, footer }) {
     trackerStatus,
     trackerBeratSaatIniGram,
     samplingLogs,
+    totalTerjualKg,
   } = summary;
 
   const samplingTrend = (samplingLogs || [])
@@ -47,6 +48,7 @@ export default function KolamCard({ summary, onPress, footer }) {
   );
   const punyaAlertBox = Boolean(latestAerator) || Boolean(isLobster && moltingAlert);
   const punyaHarvestTracker = trackerProgressPercent != null;
+  const punyaTerjual = Boolean(totalTerjualKg > 0);
   const progressClamped = Math.min(Math.max(trackerProgressPercent ?? 0, 0), 100);
   const siapPanen = trackerSisaHari != null && trackerSisaHari <= 0;
 
@@ -98,6 +100,15 @@ export default function KolamCard({ summary, onPress, footer }) {
           <Text style={styles.statLabel}>biomassa</Text>
         </View>
       </View>
+
+      {punyaTerjual ? (
+        <View style={styles.terjualBox}>
+          <Text style={styles.terjualText}>
+            Terjual: {totalTerjualKg.toFixed(1)} kg · Sisa Kolam: {biomassaKg != null ? biomassaKg.toFixed(1) : '-'} kg (
+            {populasiAktif ?? 0} ekor)
+          </Text>
+        </View>
+      ) : null}
 
       {punyaTrenBerat ? (
         <View style={styles.trendRow}>
@@ -293,6 +304,18 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.muted,
     marginTop: 2,
+  },
+  terjualBox: {
+    backgroundColor: COLORS.infoBg,
+    borderRadius: 10,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    marginBottom: SPACING.md,
+  },
+  terjualText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.info,
   },
   trendRow: {
     marginBottom: SPACING.md,

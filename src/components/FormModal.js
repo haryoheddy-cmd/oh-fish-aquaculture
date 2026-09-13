@@ -58,18 +58,19 @@ export default function FormModal({
   );
 }
 
-export function FormField({ label, children }) {
+export function FormField({ label, helperText, children }) {
   return (
     <View style={styles.field}>
       <Text style={styles.fieldLabel}>{label}</Text>
       {children}
+      {helperText ? <Text style={styles.fieldHelperText}>{helperText}</Text> : null}
     </View>
   );
 }
 
-export function FormInput({ label, onSubmitEditing, ...textInputProps }) {
+export function FormInput({ label, helperText, onSubmitEditing, ...textInputProps }) {
   return (
-    <FormField label={label}>
+    <FormField label={label} helperText={helperText}>
       <TextInput
         style={styles.input}
         placeholderTextColor="#9CA3AF"
@@ -148,6 +149,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.muted,
     marginBottom: SPACING.xs,
+  },
+  fieldHelperText: {
+    fontSize: 11,
+    color: COLORS.muted,
+    opacity: 0.8,
+    marginTop: 4,
   },
   input: {
     borderWidth: 1,

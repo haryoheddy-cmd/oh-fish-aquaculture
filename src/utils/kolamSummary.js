@@ -26,10 +26,11 @@ import {
   getGradingLogByKolamAsal,
   getMoltingLogByKolam,
   getAeratorLogByKolam,
+  getPenjualanByKolam,
 } from '../db/queries';
 
 export async function buildKolamSummary(kolam) {
-  const [populasiLogs, kematianLogs, samplingLogs, airLogs, pakanLogs, gradingLogs, moltingLogs, aeratorLogs] =
+  const [populasiLogs, kematianLogs, samplingLogs, airLogs, pakanLogs, gradingLogs, moltingLogs, aeratorLogs, penjualanLogs] =
     await Promise.all([
       getPopulasiLogByKolam(kolam.id),
       getKematianKonsumsiLogByKolam(kolam.id),
@@ -39,6 +40,7 @@ export async function buildKolamSummary(kolam) {
       getGradingLogByKolamAsal(kolam.id),
       getMoltingLogByKolam(kolam.id),
       getAeratorLogByKolam(kolam.id),
+      getPenjualanByKolam(kolam.id),
     ]);
 
   const latestPopulasi = populasiLogs[0] || null;
@@ -105,6 +107,12 @@ export async function buildKolamSummary(kolam) {
 
   const totalPakanBiaya = pakanLogs.reduce((sum, p) => sum + (p.biaya || 0), 0);
 
+  // Total terjual (kg) dihitung ulang tiap kali kolam ditebar baru (siklus baru),
+  // supaya "Sisa Kolam" akurat sejak tebar terakhir, bukan akumulasi lintas siklus.
+  const totalTerjualKg = penjualanLogs
+    .filter((p) => !latestPopulasi || p.tanggal >= latestPopulasi.tanggal_tebar)
+    .reduce((sum, p) => sum + (p.total_kg || 0), 0);
+
   const specKolam = kalkulasiSpesifikasiKolam({
     bentuk: kolam.bentuk,
     panjang: kolam.panjang,
@@ -160,6 +168,7 @@ export async function buildKolamSummary(kolam) {
     gradingLogs,
     moltingLogs,
     aeratorLogs,
+    penjualanLogs,
     populasiAktif,
     sr,
     biomassaKg: biomassaGram / 1000,
@@ -170,6 +179,7 @@ export async function buildKolamSummary(kolam) {
     phLevel,
     phLatest: latestAir?.ph_air ?? null,
     totalPakanBiaya,
+    totalTerjualKg,
     specKolam,
     statusTebar,
     jenisPelet,

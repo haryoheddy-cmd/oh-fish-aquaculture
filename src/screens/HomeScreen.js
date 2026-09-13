@@ -7,6 +7,7 @@ import { Skull, Utensils, NotebookPen, User } from 'lucide-react-native';
 import KolamCard from '../components/KolamCard';
 import StatusIndicator, { stokToLevel } from '../components/StatusIndicator';
 import FormModal, { FormInput } from '../components/FormModal';
+import PakanFormModal from '../components/PakanFormModal';
 import MiniBarChart from '../components/MiniBarChart';
 import { COLORS, SPACING } from '../theme';
 import { formatRupiah, todayISODate, toNumber } from '../utils/format';
@@ -299,36 +300,15 @@ export default function HomeScreen() {
         />
       </FormModal>
 
-      <FormModal
+      <PakanFormModal
         visible={activeModal === 'pakan'}
         title={`Catat Pakan - ${targetKolam?.nama_kolam ?? ''}`}
+        form={form}
+        setForm={setForm}
         onClose={closeModal}
         onSubmit={handleSubmit}
         submitDisabled={saving}
-      >
-        <FormInput
-          label="Tanggal"
-          value={form.tanggal}
-          onChangeText={(v) => setForm((f) => ({ ...f, tanggal: v }))}
-        />
-        <FormInput
-          label="Jenis Pakan"
-          value={form.jenisPakan}
-          onChangeText={(v) => setForm((f) => ({ ...f, jenisPakan: v }))}
-        />
-        <FormInput
-          label="Jumlah (kg)"
-          keyboardType="numeric"
-          value={form.jumlahKg}
-          onChangeText={(v) => setForm((f) => ({ ...f, jumlahKg: v }))}
-        />
-        <FormInput
-          label="Biaya (Rp, opsional)"
-          keyboardType="numeric"
-          value={form.biaya}
-          onChangeText={(v) => setForm((f) => ({ ...f, biaya: v }))}
-        />
-      </FormModal>
+      />
 
       <FormModal
         visible={activeModal === 'jurnal'}

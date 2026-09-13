@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Plus, Utensils, Skull, Scale, Fish, Shell, Wind } from 'lucide-react-native';
 
 import FormModal, { FormInput, FormChoice } from './FormModal';
+import PakanFormModal from './PakanFormModal';
 import KolamFormFields, { kolamFormToPayload, KOLAM_FORM_DEFAULTS } from './KolamFormFields';
 import { COLORS, SPACING } from '../theme';
 import { todayISODate, toNumber } from '../utils/format';
@@ -144,8 +145,19 @@ export default function QuickAddFab() {
         </View>
       </Modal>
 
+      <PakanFormModal
+        visible={activeAction === 'pakan'}
+        title={activeActionMeta?.label ?? ''}
+        form={form}
+        setForm={setForm}
+        onClose={closeForm}
+        onSubmit={handleSubmit}
+        submitDisabled={submitDisabled}
+        kolamOptions={kolamOptions}
+      />
+
       <FormModal
-        visible={!!activeAction}
+        visible={!!activeAction && activeAction !== 'pakan'}
         title={activeActionMeta?.label ?? ''}
         onClose={closeForm}
         onSubmit={handleSubmit}
@@ -158,14 +170,6 @@ export default function QuickAddFab() {
             onChange={(v) => setForm((f) => ({ ...f, idKolam: v }))}
             options={kolamOptions}
           />
-        )}
-        {activeAction === 'pakan' && (
-          <>
-            <FormInput label="Tanggal" value={form.tanggal} onChangeText={(v) => setForm((f) => ({ ...f, tanggal: v }))} />
-            <FormInput label="Jenis Pakan" value={form.jenisPakan} onChangeText={(v) => setForm((f) => ({ ...f, jenisPakan: v }))} />
-            <FormInput label="Jumlah (kg)" keyboardType="numeric" value={form.jumlahKg} onChangeText={(v) => setForm((f) => ({ ...f, jumlahKg: v }))} />
-            <FormInput label="Biaya (Rp, opsional)" keyboardType="numeric" value={form.biaya} onChangeText={(v) => setForm((f) => ({ ...f, biaya: v }))} />
-          </>
         )}
         {activeAction === 'mati' && (
           <>

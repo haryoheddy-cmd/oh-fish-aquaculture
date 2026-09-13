@@ -30,6 +30,7 @@ import FormModal, { FormInput, FormChoice } from '../components/FormModal';
 import KolamFormFields, { kolamFormToPayload, kolamToForm, KOLAM_FORM_DEFAULTS } from '../components/KolamFormFields';
 import PakanAlternatifCalc from '../components/PakanAlternatifCalc';
 import HargaJualWidget from '../components/HargaJualWidget';
+import PakanFormModal from '../components/PakanFormModal';
 import { COLORS, SPACING } from '../theme';
 import { formatTanggal, todayISODate, toNumber } from '../utils/format';
 import { buildKolamSummary } from '../utils/kolamSummary';
@@ -341,18 +342,15 @@ export default function KolamScreen() {
           <FormInput label="Berat Rata-rata (gram)" keyboardType="numeric" value={form.beratRataRataGram} onChangeText={(v) => setForm((f) => ({ ...f, beratRataRataGram: v }))} />
         </FormModal>
 
-        <FormModal
+        <PakanFormModal
           visible={activeModal === 'pakan'}
           title="Pakan Harian"
+          form={form}
+          setForm={setForm}
           onClose={closeModal}
           onSubmit={handleSubmitDetailModal}
           submitDisabled={saving}
-        >
-          <FormInput label="Tanggal" value={form.tanggal} onChangeText={(v) => setForm((f) => ({ ...f, tanggal: v }))} />
-          <FormInput label="Jenis Pakan" value={form.jenisPakan} onChangeText={(v) => setForm((f) => ({ ...f, jenisPakan: v }))} />
-          <FormInput label="Jumlah (kg)" keyboardType="numeric" value={form.jumlahKg} onChangeText={(v) => setForm((f) => ({ ...f, jumlahKg: v }))} />
-          <FormInput label="Biaya (Rp, opsional)" keyboardType="numeric" value={form.biaya} onChangeText={(v) => setForm((f) => ({ ...f, biaya: v }))} />
-        </FormModal>
+        />
 
         <FormModal
           visible={activeModal === 'air'}
