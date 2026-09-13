@@ -107,11 +107,18 @@ export async function buildKolamSummary(kolam) {
 
   const totalPakanBiaya = pakanLogs.reduce((sum, p) => sum + (p.biaya || 0), 0);
 
-  // Total terjual (kg) dihitung ulang tiap kali kolam ditebar baru (siklus baru),
+  // Total terjual (kg/ekor) dihitung ulang tiap kali kolam ditebar baru (siklus baru),
   // supaya "Sisa Kolam" akurat sejak tebar terakhir, bukan akumulasi lintas siklus.
+  const biomassaKg = biomassaGram / 1000;
   const totalTerjualKg = penjualanLogs
     .filter((p) => !latestPopulasi || p.tanggal >= latestPopulasi.tanggal_tebar)
     .reduce((sum, p) => sum + (p.total_kg || 0), 0);
+  const totalEkorTerjual = kematianLogs
+    .filter((k) => (!latestPopulasi || k.tanggal >= latestPopulasi.tanggal_tebar) && k.keterangan?.startsWith('Panen'))
+    .reduce((sum, k) => sum + (k.jumlah_konsumsi || 0), 0);
+  const totalAwalKg = biomassaKg + totalTerjualKg;
+  const totalAwalEkor = populasiAktif + totalEkorTerjual;
+  const persentaseSisaBiomassa = totalAwalKg > 0 ? Math.min(Math.max((biomassaKg / totalAwalKg) * 100, 0), 100) : null;
 
   const specKolam = kalkulasiSpesifikasiKolam({
     bentuk: kolam.bentuk,
@@ -171,7 +178,7 @@ export async function buildKolamSummary(kolam) {
     penjualanLogs,
     populasiAktif,
     sr,
-    biomassaKg: biomassaGram / 1000,
+    biomassaKg,
     progressPercent,
     sisaHari,
     level,
@@ -180,6 +187,10 @@ export async function buildKolamSummary(kolam) {
     phLatest: latestAir?.ph_air ?? null,
     totalPakanBiaya,
     totalTerjualKg,
+    totalEkorTerjual,
+    totalAwalKg,
+    totalAwalEkor,
+    persentaseSisaBiomassa,
     specKolam,
     statusTebar,
     jenisPelet,

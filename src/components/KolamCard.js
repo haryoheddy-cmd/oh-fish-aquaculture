@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import StatusIndicator, { tebarStatusToLevel, tebarStatusToLabel } from './StatusIndicator';
 import Sparkline from './Sparkline';
+import BiomassaChart from './BiomassaChart';
 import { COLORS, SPACING } from '../theme';
 
 export default function KolamCard({ summary, onPress, footer }) {
@@ -28,6 +29,10 @@ export default function KolamCard({ summary, onPress, footer }) {
     trackerBeratSaatIniGram,
     samplingLogs,
     totalTerjualKg,
+    totalEkorTerjual,
+    totalAwalKg,
+    totalAwalEkor,
+    persentaseSisaBiomassa,
   } = summary;
 
   const samplingTrend = (samplingLogs || [])
@@ -102,11 +107,19 @@ export default function KolamCard({ summary, onPress, footer }) {
       </View>
 
       {punyaTerjual ? (
-        <View style={styles.terjualBox}>
-          <Text style={styles.terjualText}>
-            Terjual: {totalTerjualKg.toFixed(1)} kg · Sisa Kolam: {biomassaKg != null ? biomassaKg.toFixed(1) : '-'} kg (
-            {populasiAktif ?? 0} ekor)
-          </Text>
+        <View style={styles.biomassaBox}>
+          <BiomassaChart sisaKg={biomassaKg ?? 0} terjualKg={totalTerjualKg} size={96} strokeWidth={12} />
+          <View style={styles.biomassaSummary}>
+            <Text style={styles.biomassaSummaryLine}>
+              🐟 Total Awal: {totalAwalKg.toFixed(1)} kg ({totalAwalEkor} ekor)
+            </Text>
+            <Text style={styles.biomassaSummaryLine}>
+              💰 Terjual: {totalTerjualKg.toFixed(1)} kg ({totalEkorTerjual} ekor)
+            </Text>
+            <Text style={styles.biomassaSummaryLine}>
+              📊 Persentase Sisa: {persentaseSisaBiomassa != null ? persentaseSisaBiomassa.toFixed(0) : '-'}%
+            </Text>
+          </View>
         </View>
       ) : null}
 
@@ -305,17 +318,25 @@ const styles = StyleSheet.create({
     color: COLORS.muted,
     marginTop: 2,
   },
-  terjualBox: {
-    backgroundColor: COLORS.infoBg,
-    borderRadius: 10,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
+  biomassaBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FAFBFA',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: SPACING.md,
     marginBottom: SPACING.md,
+    gap: SPACING.md,
   },
-  terjualText: {
+  biomassaSummary: {
+    flex: 1,
+    gap: 4,
+  },
+  biomassaSummaryLine: {
     fontSize: 12,
-    fontWeight: '700',
-    color: COLORS.info,
+    fontWeight: '600',
+    color: COLORS.text,
   },
   trendRow: {
     marginBottom: SPACING.md,
