@@ -8,6 +8,7 @@ import KolamCard from '../components/KolamCard';
 import StatusIndicator, { stokToLevel } from '../components/StatusIndicator';
 import FormModal, { FormInput } from '../components/FormModal';
 import PakanFormModal from '../components/PakanFormModal';
+import DailyPakanChecklist from '../components/DailyPakanChecklist';
 import MiniBarChart from '../components/MiniBarChart';
 import { COLORS, SPACING } from '../theme';
 import { formatRupiah, formatTanggal, todayISODate, toNumber } from '../utils/format';
@@ -318,26 +319,28 @@ export default function HomeScreen() {
           <Text style={styles.emptyText}>Belum ada kolam. Tambahkan dari tab "Kolam & Pakan".</Text>
         )}
         {summaries.map((s) => (
-          <KolamCard
-            key={s.kolam.id}
-            summary={s}
-            footer={
-              <View style={styles.quickActions}>
-                <Pressable style={styles.quickAction} onPress={() => openModal('mati', s.kolam)}>
-                  <Skull size={18} color={COLORS.danger} />
-                  <Text style={styles.quickActionText}>+Mati</Text>
-                </Pressable>
-                <Pressable style={styles.quickAction} onPress={() => openModal('pakan', s.kolam)}>
-                  <Utensils size={18} color={COLORS.primary} />
-                  <Text style={styles.quickActionText}>+Pakan</Text>
-                </Pressable>
-                <Pressable style={styles.quickAction} onPress={() => openModal('jurnal', s.kolam)}>
-                  <NotebookPen size={18} color={COLORS.warning} />
-                  <Text style={styles.quickActionText}>+Jurnal</Text>
-                </Pressable>
-              </View>
-            }
-          />
+          <View key={s.kolam.id}>
+            <KolamCard
+              summary={s}
+              footer={
+                <View style={styles.quickActions}>
+                  <Pressable style={styles.quickAction} onPress={() => openModal('mati', s.kolam)}>
+                    <Skull size={18} color={COLORS.danger} />
+                    <Text style={styles.quickActionText}>+Mati</Text>
+                  </Pressable>
+                  <Pressable style={styles.quickAction} onPress={() => openModal('pakan', s.kolam)}>
+                    <Utensils size={18} color={COLORS.primary} />
+                    <Text style={styles.quickActionText}>+Pakan</Text>
+                  </Pressable>
+                  <Pressable style={styles.quickAction} onPress={() => openModal('jurnal', s.kolam)}>
+                    <NotebookPen size={18} color={COLORS.warning} />
+                    <Text style={styles.quickActionText}>+Jurnal</Text>
+                  </Pressable>
+                </View>
+              }
+            />
+            <DailyPakanChecklist idKolam={s.kolam.id} porsiPakanHarian={s.porsiPakanHarian} />
+          </View>
         ))}
       </ScrollView>
 

@@ -28,21 +28,38 @@ import {
   getMoltingLogByKolam,
   getAeratorLogByKolam,
   getPenjualanByKolam,
+  getDailyChecklistByKolamAndTanggal,
+  getWaterAlertsByKolam,
 } from '../db/queries';
+import { todayISODate } from './format';
 
 export async function buildKolamSummary(kolam) {
-  const [populasiLogs, kematianLogs, samplingLogs, airLogs, pakanLogs, gradingLogs, moltingLogs, aeratorLogs, penjualanLogs] =
-    await Promise.all([
-      getPopulasiLogByKolam(kolam.id),
-      getKematianKonsumsiLogByKolam(kolam.id),
-      getSamplingLogByKolam(kolam.id),
-      getAirLogByKolam(kolam.id),
-      getPakanLogByKolam(kolam.id),
-      getGradingLogByKolamAsal(kolam.id),
-      getMoltingLogByKolam(kolam.id),
-      getAeratorLogByKolam(kolam.id),
-      getPenjualanByKolam(kolam.id),
-    ]);
+  const hariIni = todayISODate();
+  const [
+    populasiLogs,
+    kematianLogs,
+    samplingLogs,
+    airLogs,
+    pakanLogs,
+    gradingLogs,
+    moltingLogs,
+    aeratorLogs,
+    penjualanLogs,
+    dailyChecklistHariIni,
+    waterAlerts,
+  ] = await Promise.all([
+    getPopulasiLogByKolam(kolam.id),
+    getKematianKonsumsiLogByKolam(kolam.id),
+    getSamplingLogByKolam(kolam.id),
+    getAirLogByKolam(kolam.id),
+    getPakanLogByKolam(kolam.id),
+    getGradingLogByKolamAsal(kolam.id),
+    getMoltingLogByKolam(kolam.id),
+    getAeratorLogByKolam(kolam.id),
+    getPenjualanByKolam(kolam.id),
+    getDailyChecklistByKolamAndTanggal(kolam.id, hariIni),
+    getWaterAlertsByKolam(kolam.id),
+  ]);
 
   const latestPopulasi = populasiLogs[0] || null;
   const latestSampling = samplingLogs[0] || null;
@@ -85,9 +102,6 @@ export async function buildKolamSummary(kolam) {
     : { isAlert: false, pesan: null };
 
   const phLevel = latestAir?.ph_air != null ? phToLevel(latestAir.ph_air) : null;
-  const kualitasAir = latestAir
-    ? analisaKualitasAir({ phAir: latestAir.ph_air, suhu: latestAir.suhu, kejernihan: latestAir.kejernihan })
-    : null;
 
   const latestAerator = aeratorLogs[0] || null;
   const aeratorLevel = latestAerator ? aeratorStatusToLevel(latestAerator.status_aerator) : null;
@@ -138,6 +152,20 @@ export async function buildKolamSummary(kolam) {
     jumlahTingkat: kolam.jumlah_tingkat,
     jumlahBoxPerTingkat: kolam.jumlah_box_per_tingkat,
   });
+  const kualitasAir = latestAir
+    ? analisaKualitasAir({
+        phAir: latestAir.ph_air,
+        suhu: latestAir.suhu,
+        kejernihan: latestAir.kejernihan,
+        volumeAirM3: specKolam.volumeAirM3,
+      })
+    : null;
+
+  const waterAlertsPending = waterAlerts.filter((a) => a.status === 'Pending');
+  const waterAlertsResolvedHariIni = waterAlerts.filter(
+    (a) => a.status === 'Resolved' && a.waktu_resolved && a.waktu_resolved.startsWith(hariIni)
+  );
+
   const statusTebar = cekStatusKepadatanTebar(populasiAktif, specKolam.tebarMaksimalEkor.max);
   const jenisPelet = rekomendasiJenisPelet(beratTerakhir);
   const rekomendasiPakanHarianKg = hitungRekomendasiPakanHarianKg(biomassaGram);
@@ -190,6 +218,9 @@ export async function buildKolamSummary(kolam) {
     phLevel,
     phLatest: latestAir?.ph_air ?? null,
     kualitasAir,
+    waterAlertsPending,
+    waterAlertsResolvedHariIni,
+    dailyChecklistHariIni,
     totalPakanBiaya,
     totalTerjualKg,
     totalEkorTerjual,

@@ -704,3 +704,84 @@ export async function setHargaPasaranLokal(jenisKomoditas, hargaPerKg) {
   );
   return result.changes;
 }
+
+// ---------- daily_checklist ----------
+
+export async function getDailyChecklistByKolamAndTanggal(idKolam, tanggal) {
+  const db = getDatabase();
+  return db.getAllAsync(
+    'SELECT * FROM daily_checklist WHERE id_kolam = ? AND tanggal = ?',
+    idKolam,
+    tanggal
+  );
+}
+
+/**
+ * Tandai satu sesi pakan (Pagi/Sore/Malam) selesai hari ini: simpan
+ * timestamp jam saat ini + realisasi kg. Upsert per (id_kolam, tanggal,
+ * sesi_pakan) supaya menekan checkbox yang sama dua kali hanya
+ * memperbarui data, bukan menduplikasi baris.
+ */
+export async function upsertDailyChecklist({ idKolam, tanggal, sesiPakan, jumlahKg }) {
+  const db = getDatabase();
+  const existing = await db.getFirstAsync(
+    'SELECT * FROM daily_checklist WHERE id_kolam = ? AND tanggal = ? AND sesi_pakan = ?',
+    idKolam,
+    tanggal,
+    sesiPakan
+  );
+  const waktuSelesai = new Date().toISOString();
+
+  if (existing) {
+    await db.runAsync(
+      'UPDATE daily_checklist SET is_completed = 1, waktu_selesai = ?, jumlah_kg = ? WHERE id = ?',
+      waktuSelesai,
+      jumlahKg,
+      existing.id
+    );
+    return existing.id;
+  }
+
+  const result = await db.runAsync(
+    `INSERT INTO daily_checklist (id_kolam, tanggal, sesi_pakan, is_completed, waktu_selesai, jumlah_kg)
+     VALUES (?, ?, ?, 1, ?, ?)`,
+    idKolam,
+    tanggal,
+    sesiPakan,
+    waktuSelesai,
+    jumlahKg
+  );
+  return result.lastInsertRowId;
+}
+
+// ---------- water_alerts ----------
+
+export async function createWaterAlert({ idKolam, tanggal, jenisAlert, pesan, rekomendasi = null }) {
+  const db = getDatabase();
+  const result = await db.runAsync(
+    `INSERT INTO water_alerts (id_kolam, tanggal, jenis_alert, pesan, rekomendasi, status, waktu_dibuat)
+     VALUES (?, ?, ?, ?, ?, 'Pending', ?)`,
+    idKolam,
+    tanggal,
+    jenisAlert,
+    pesan,
+    rekomendasi,
+    new Date().toISOString()
+  );
+  return result.lastInsertRowId;
+}
+
+export async function getWaterAlertsByKolam(idKolam) {
+  const db = getDatabase();
+  return db.getAllAsync('SELECT * FROM water_alerts WHERE id_kolam = ? ORDER BY waktu_dibuat DESC', idKolam);
+}
+
+export async function resolveWaterAlert(id) {
+  const db = getDatabase();
+  const result = await db.runAsync(
+    "UPDATE water_alerts SET status = 'Resolved', waktu_resolved = ? WHERE id = ?",
+    new Date().toISOString(),
+    id
+  );
+  return result.changes;
+}

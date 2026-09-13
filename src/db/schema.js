@@ -158,6 +158,28 @@ CREATE TABLE IF NOT EXISTS harga_pasaran_lokal (
   updated_at TEXT
 );
 
+CREATE TABLE IF NOT EXISTS daily_checklist (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id_kolam INTEGER NOT NULL REFERENCES kolam(id) ON DELETE CASCADE,
+  tanggal TEXT NOT NULL,
+  sesi_pakan TEXT NOT NULL CHECK (sesi_pakan IN ('Pagi', 'Sore', 'Malam')),
+  is_completed INTEGER NOT NULL DEFAULT 0 CHECK (is_completed IN (0, 1)),
+  waktu_selesai TEXT,
+  jumlah_kg REAL
+);
+
+CREATE TABLE IF NOT EXISTS water_alerts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id_kolam INTEGER NOT NULL REFERENCES kolam(id) ON DELETE CASCADE,
+  tanggal TEXT NOT NULL,
+  jenis_alert TEXT NOT NULL,
+  pesan TEXT NOT NULL,
+  rekomendasi TEXT,
+  status TEXT NOT NULL DEFAULT 'Pending' CHECK (status IN ('Pending', 'Resolved')),
+  waktu_dibuat TEXT,
+  waktu_resolved TEXT
+);
+
 CREATE INDEX IF NOT EXISTS idx_populasi_log_id_kolam ON populasi_log(id_kolam);
 CREATE INDEX IF NOT EXISTS idx_kematian_konsumsi_log_id_kolam ON kematian_konsumsi_log(id_kolam);
 CREATE INDEX IF NOT EXISTS idx_sampling_log_id_kolam ON sampling_log(id_kolam);
@@ -168,6 +190,8 @@ CREATE INDEX IF NOT EXISTS idx_grading_log_id_kolam_tujuan ON grading_log(id_kol
 CREATE INDEX IF NOT EXISTS idx_penjualan_id_kolam ON penjualan(id_kolam);
 CREATE INDEX IF NOT EXISTS idx_molting_log_id_kolam ON molting_log(id_kolam);
 CREATE INDEX IF NOT EXISTS idx_aerator_log_id_kolam ON aerator_log(id_kolam);
+CREATE INDEX IF NOT EXISTS idx_daily_checklist_id_kolam ON daily_checklist(id_kolam);
+CREATE INDEX IF NOT EXISTS idx_water_alerts_id_kolam ON water_alerts(id_kolam);
 `;
 
 const KOLAM_NEW_COLUMNS = [

@@ -489,23 +489,40 @@ export function hitungRekomendasiHargaJual(totalModal, totalBiomassKg, jenisKomo
 
 // ---------- Kualitas air & smart alert ----------
 
+const DOSIS_DOLOMIT_GRAM_PER_M3 = 25;
+
 /**
  * Analisa parameter air (pH, suhu, kejernihan) dan hasilkan level status
- * beserta pesan rekomendasi otomatis:
- * - pH < 6.5: air asam, sarankan penambahan Dolomit.
+ * beserta daftar alert terstruktur (pesan + rekomendasi aksi singkat siap
+ * dipakai sebagai label tombol "Sudah [rekomendasi]" & disimpan ke
+ * tabel water_alerts):
+ * - pH < 6.5: air asam, sarankan penambahan Dolomit (dosis dihitung dari
+ *   volumeAirM3 bila tersedia, ±25 gram/m3).
  * - pH > 8.5: air basa, sarankan pergantian air 20%.
- * - Kejernihan 'Keruh': naikkan level ke minimal waspada.
+ * - Kejernihan 'Keruh': naikkan level ke minimal waspada, sarankan sifon dasar kolam.
  */
-export function analisaKualitasAir({ phAir = null, suhu = null, kejernihan = null } = {}) {
+export function analisaKualitasAir({ phAir = null, suhu = null, kejernihan = null, volumeAirM3 = null } = {}) {
   const alerts = [];
   let level = 'aman';
 
   if (phAir != null) {
     if (phAir < 6.5) {
-      alerts.push('Air Asam! Sarankan penambahan Dolomit.');
+      const dosisGram = volumeAirM3 > 0 ? Math.round(volumeAirM3 * DOSIS_DOLOMIT_GRAM_PER_M3) : null;
+      alerts.push({
+        kode: 'ph_asam',
+        pesan:
+          dosisGram != null
+            ? `Air Asam! Sarankan penambahan Dolomit ±${dosisGram} gram.`
+            : 'Air Asam! Sarankan penambahan Dolomit.',
+        rekomendasi: 'Beri Dolomit',
+      });
       level = 'bahaya';
     } else if (phAir > 8.5) {
-      alerts.push('Air Basa! Sarankan pergantian air 20%.');
+      alerts.push({
+        kode: 'ph_basa',
+        pesan: 'Air Basa! Sarankan pergantian air 20%.',
+        rekomendasi: 'Ganti Air 20%',
+      });
       level = 'bahaya';
     } else if (phAir < 6.8 || phAir > 8.2) {
       level = level === 'bahaya' ? level : 'waspada';
@@ -513,7 +530,11 @@ export function analisaKualitasAir({ phAir = null, suhu = null, kejernihan = nul
   }
 
   if (kejernihan === 'Keruh') {
-    alerts.push('Air Keruh! Perhatikan sisa pakan & lakukan sifon dasar kolam.');
+    alerts.push({
+      kode: 'keruh',
+      pesan: 'Air Keruh! Perhatikan sisa pakan & lakukan sifon dasar kolam.',
+      rekomendasi: 'Sifon Kolam',
+    });
     level = level === 'bahaya' ? level : 'waspada';
   } else if (kejernihan === 'Agak Keruh') {
     level = level === 'bahaya' ? level : 'waspada';

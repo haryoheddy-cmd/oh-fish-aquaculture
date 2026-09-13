@@ -34,10 +34,11 @@ import HargaJualWidget from '../components/HargaJualWidget';
 import PakanFormModal from '../components/PakanFormModal';
 import WaterQualityModal from '../components/WaterQualityModal';
 import GradingModal from '../components/GradingModal';
+import DailyPakanChecklist from '../components/DailyPakanChecklist';
 import { COLORS, SPACING } from '../theme';
 import { formatTanggal, todayISODate, toNumber } from '../utils/format';
 import { buildKolamSummary } from '../utils/kolamSummary';
-import { hitungRekomendasiPakanHarianKg } from '../utils/leleCalculators';
+import { hitungRekomendasiPakanHarianKg, analisaKualitasAir } from '../utils/leleCalculators';
 import { subscribeDataChanged, emitDataChanged } from '../utils/eventBus';
 import {
   getAllKolam,
@@ -53,8 +54,43 @@ import {
   createGradingLog,
   createMoltingLog,
   createAeratorLog,
+  createWaterAlert,
+  resolveWaterAlert,
   getAllPenjualBibit,
 } from '../db/queries';
+
+function formatJamFromIso(isoString) {
+  if (!isoString) return null;
+  const date = new Date(isoString);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+}
+
+function buildRekapHariIni(summary) {
+  const items = [];
+
+  (summary.dailyChecklistHariIni || [])
+    .filter((row) => row.is_completed)
+    .forEach((row) => {
+      items.push({
+        id: `checklist-${row.id}`,
+        waktu: row.waktu_selesai,
+        text: `Pakan ${row.sesi_pakan} (${(row.jumlah_kg ?? 0).toFixed(2)} kg) [Selesai]`,
+      });
+    });
+
+  (summary.waterAlertsResolvedHariIni || []).forEach((alert) => {
+    items.push({
+      id: `alert-${alert.id}`,
+      waktu: alert.waktu_resolved,
+      text: `${alert.rekomendasi || alert.pesan} [Selesai]`,
+    });
+  });
+
+  return items
+    .filter((item) => item.waktu)
+    .sort((a, b) => new Date(a.waktu) - new Date(b.waktu));
+}
 
 const ACTIONS = [
   { key: 'tebar', label: 'Tebar Bibit', icon: Fish, color: COLORS.primary },
@@ -241,15 +277,30 @@ export default function KolamScreen() {
           biaya: form.biaya ? toNumber(form.biaya) : null,
         });
       } else if (activeModal === 'air') {
+        const tanggalAir = form.tanggal || todayISODate();
+        const phAir = form.phAir ? toNumber(form.phAir) : null;
+        const kejernihan = form.kejernihan || null;
+
         await createAirLog({
           idKolam,
-          tanggal: form.tanggal || todayISODate(),
-          phAir: form.phAir ? toNumber(form.phAir) : null,
+          tanggal: tanggalAir,
+          phAir,
           suhu: form.suhu ? toNumber(form.suhu) : null,
-          kejernihan: form.kejernihan || null,
+          kejernihan,
           kondisiCuaca: form.kondisiCuaca || null,
           tindakan: form.tindakan || null,
         });
+
+        const hasilAnalisa = analisaKualitasAir({ phAir, kejernihan, volumeAirM3: selected.specKolam.volumeAirM3 });
+        for (const alert of hasilAnalisa.alerts) {
+          await createWaterAlert({
+            idKolam,
+            tanggal: tanggalAir,
+            jenisAlert: alert.kode,
+            pesan: alert.pesan,
+            rekomendasi: alert.rekomendasi,
+          });
+        }
       } else if (activeModal === 'grading') {
         const jumlahEkor = toNumber(form.jumlahEkor);
         const tanggalGrading = form.tanggal || todayISODate();
@@ -327,6 +378,12 @@ export default function KolamScreen() {
     }
   };
 
+  const handleResolveAlert = async (alertId) => {
+    await resolveWaterAlert(alertId);
+    await loadData();
+    emitDataChanged();
+  };
+
   if (summaries === null) {
     return (
       <View style={styles.center}>
@@ -346,6 +403,7 @@ export default function KolamScreen() {
         activityFeed={activityFeed}
         onBack={() => setSelectedKolamId(null)}
         openModal={openModal}
+        onResolveAlert={handleResolveAlert}
         refreshing={refreshing}
         onRefresh={onRefresh}
       >
@@ -543,9 +601,20 @@ export default function KolamScreen() {
   );
 }
 
-function KolamDetail({ summary, rekomendasiPakan, activityFeed, onBack, openModal, refreshing, onRefresh, children }) {
+function KolamDetail({
+  summary,
+  rekomendasiPakan,
+  activityFeed,
+  onBack,
+  openModal,
+  onResolveAlert,
+  refreshing,
+  onRefresh,
+  children,
+}) {
   const insets = useSafeAreaInsets();
   const [pakanAlternatifVisible, setPakanAlternatifVisible] = useState(false);
+  const rekapHariIni = buildRekapHariIni(summary);
 
   return (
     <View style={styles.screen}>
@@ -572,10 +641,13 @@ function KolamDetail({ summary, rekomendasiPakan, activityFeed, onBack, openModa
         {summary.kualitasAir ? (
           <View style={styles.waterQualityBox}>
             <StatusIndicator level={summary.kualitasAir.level} label={summary.kualitasAir.label} />
-            {summary.kualitasAir.alerts.map((pesan, i) => (
-              <Text key={i} style={styles.waterQualityAlertText}>
-                ⚠️ {pesan}
-              </Text>
+            {summary.waterAlertsPending.map((alert) => (
+              <View key={alert.id} style={styles.alertActionRow}>
+                <Text style={styles.waterQualityAlertText}>⚠️ {alert.pesan}</Text>
+                <Pressable style={styles.alertActionButton} onPress={() => onResolveAlert(alert.id)}>
+                  <Text style={styles.alertActionButtonText}>✓ Sudah {alert.rekomendasi || 'Ditangani'}</Text>
+                </Pressable>
+              </View>
             ))}
           </View>
         ) : null}
@@ -587,6 +659,8 @@ function KolamDetail({ summary, rekomendasiPakan, activityFeed, onBack, openModa
           </Text>
           <Text style={styles.pakanSub}>3-5% dari total biomassa kolam</Text>
         </View>
+
+        <DailyPakanChecklist idKolam={summary.kolam.id} porsiPakanHarian={summary.porsiPakanHarian} />
 
         <HargaJualWidget
           title="Analisis Harga Jual (Estimasi Saat Ini)"
@@ -608,6 +682,18 @@ function KolamDetail({ summary, rekomendasiPakan, activityFeed, onBack, openModa
             </Pressable>
           ))}
         </View>
+
+        {rekapHariIni.length > 0 ? (
+          <>
+            <Text style={styles.sectionTitle}>Rekapitulasi Hari Ini</Text>
+            {rekapHariIni.map((item) => (
+              <View key={item.id} style={styles.activityRow}>
+                <Text style={styles.activityText}>{item.text}</Text>
+                <Text style={styles.activityDate}>{formatJamFromIso(item.waktu)}</Text>
+              </View>
+            ))}
+          </>
+        ) : null}
 
         <Text style={styles.sectionTitle}>Riwayat Terbaru</Text>
         {activityFeed.length === 0 && <Text style={styles.emptyText}>Belum ada catatan untuk kolam ini.</Text>}
@@ -708,6 +794,26 @@ const styles = StyleSheet.create({
   waterQualityAlertText: {
     fontSize: 12,
     fontWeight: '600',
+    color: COLORS.danger,
+    flexShrink: 1,
+    marginRight: SPACING.sm,
+  },
+  alertActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: SPACING.xs,
+  },
+  alertActionButton: {
+    backgroundColor: COLORS.dangerBg,
+    borderRadius: 999,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 6,
+  },
+  alertActionButtonText: {
+    fontSize: 11,
+    fontWeight: '700',
     color: COLORS.danger,
   },
   pakanCard: {

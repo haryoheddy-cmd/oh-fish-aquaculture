@@ -6,11 +6,12 @@ import { COLORS, SPACING } from '../theme';
 import { toNumber } from '../utils/format';
 import { analisaKualitasAir } from '../utils/leleCalculators';
 
-export default function WaterQualityModal({ visible, form, setForm, onClose, onSubmit, submitDisabled }) {
+export default function WaterQualityModal({ visible, form, setForm, onClose, onSubmit, submitDisabled, volumeAirM3 = null }) {
   const hasil = analisaKualitasAir({
     phAir: form.phAir ? toNumber(form.phAir) : null,
     suhu: form.suhu ? toNumber(form.suhu) : null,
     kejernihan: form.kejernihan || null,
+    volumeAirM3,
   });
 
   return (
@@ -43,10 +44,10 @@ export default function WaterQualityModal({ visible, form, setForm, onClose, onS
 
       {hasil.alerts.length > 0 ? (
         <View style={styles.alertBox}>
-          {hasil.alerts.map((pesan, i) => (
-            <View key={i} style={styles.alertRow}>
+          {hasil.alerts.map((alert) => (
+            <View key={alert.kode} style={styles.alertRow}>
               <TriangleAlert size={16} color={COLORS.danger} />
-              <Text style={styles.alertText}>{pesan}</Text>
+              <Text style={styles.alertText}>{alert.pesan}</Text>
             </View>
           ))}
         </View>
