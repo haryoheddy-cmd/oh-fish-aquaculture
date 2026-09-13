@@ -152,6 +152,12 @@ CREATE TABLE IF NOT EXISTS profil_user (
 
 INSERT OR IGNORE INTO profil_user (id) VALUES (1);
 
+CREATE TABLE IF NOT EXISTS harga_pasaran_lokal (
+  jenis_komoditas TEXT PRIMARY KEY,
+  harga_per_kg REAL NOT NULL,
+  updated_at TEXT
+);
+
 CREATE INDEX IF NOT EXISTS idx_populasi_log_id_kolam ON populasi_log(id_kolam);
 CREATE INDEX IF NOT EXISTS idx_kematian_konsumsi_log_id_kolam ON kematian_konsumsi_log(id_kolam);
 CREATE INDEX IF NOT EXISTS idx_sampling_log_id_kolam ON sampling_log(id_kolam);

@@ -29,6 +29,7 @@ import KolamCard from '../components/KolamCard';
 import FormModal, { FormInput, FormChoice } from '../components/FormModal';
 import KolamFormFields, { kolamFormToPayload, kolamToForm, KOLAM_FORM_DEFAULTS } from '../components/KolamFormFields';
 import PakanAlternatifCalc from '../components/PakanAlternatifCalc';
+import HargaJualWidget from '../components/HargaJualWidget';
 import { COLORS, SPACING } from '../theme';
 import { formatTanggal, todayISODate, toNumber } from '../utils/format';
 import { buildKolamSummary } from '../utils/kolamSummary';
@@ -545,6 +546,13 @@ function KolamDetail({ summary, rekomendasiPakan, activityFeed, onBack, openModa
           </Text>
           <Text style={styles.pakanSub}>3-5% dari total biomassa kolam</Text>
         </View>
+
+        <HargaJualWidget
+          title="Analisis Harga Jual (Estimasi Saat Ini)"
+          totalModal={summary.totalPakanBiaya}
+          totalBiomassKg={summary.biomassaKg}
+          jenisKomoditas={summary.kolam.jenis_komoditas}
+        />
 
         <Text style={styles.sectionTitle}>Catat Aktivitas</Text>
         <View style={styles.actionGrid}>

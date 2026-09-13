@@ -668,3 +668,26 @@ export async function updateProfilUser({ namaPanggilan = null, namaPeternakan = 
   );
   return result.changes;
 }
+
+// ---------- harga_pasaran_lokal ----------
+
+export async function getHargaPasaranLokal(jenisKomoditas) {
+  const db = getDatabase();
+  return db.getFirstAsync(
+    'SELECT * FROM harga_pasaran_lokal WHERE jenis_komoditas = ?',
+    jenisKomoditas
+  );
+}
+
+export async function setHargaPasaranLokal(jenisKomoditas, hargaPerKg) {
+  const db = getDatabase();
+  const result = await db.runAsync(
+    `INSERT INTO harga_pasaran_lokal (jenis_komoditas, harga_per_kg, updated_at)
+     VALUES (?, ?, ?)
+     ON CONFLICT(jenis_komoditas) DO UPDATE SET harga_per_kg = excluded.harga_per_kg, updated_at = excluded.updated_at`,
+    jenisKomoditas,
+    hargaPerKg,
+    new Date().toISOString()
+  );
+  return result.changes;
+}

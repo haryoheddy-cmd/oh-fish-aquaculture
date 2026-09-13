@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "MisterLele",
-    "slug": "MisterLele",
+    "slug": "haryo-heddy",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -19,6 +19,21 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Mister Lele butuh akses galeri untuk memilih foto profil kamu."
+        }
+      ],
+      "expo-file-system"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "b7ed47c0-178d-4a0d-b37a-9d83b117ec4e"
+      }
+    },
+    "owner": "misterleles-team"
   }
 }

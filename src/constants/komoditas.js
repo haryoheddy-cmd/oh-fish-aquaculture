@@ -7,6 +7,7 @@ export const KOMODITAS_PRESETS = {
     masaPanenHari: 90,
     targetBobotGram: 110,
     padatTebarPerM3: 150,
+    hargaPasaranRataRata: 22000,
   },
   nila_merah: {
     id: 'nila_merah',
@@ -16,6 +17,7 @@ export const KOMODITAS_PRESETS = {
     masaPanenHari: 135,
     targetBobotGram: 250,
     padatTebarPerM3: 40,
+    hargaPasaranRataRata: 35000,
   },
   nila_hitam: {
     id: 'nila_hitam',
@@ -25,6 +27,7 @@ export const KOMODITAS_PRESETS = {
     masaPanenHari: 135,
     targetBobotGram: 250,
     padatTebarPerM3: 40,
+    hargaPasaranRataRata: 35000,
   },
   gurame: {
     id: 'gurame',
@@ -34,6 +37,7 @@ export const KOMODITAS_PRESETS = {
     masaPanenHari: 330,
     targetBobotGram: 600,
     padatTebarPerM3: 12,
+    hargaPasaranRataRata: 50000,
   },
   gurame_padang: {
     id: 'gurame_padang',
@@ -43,6 +47,7 @@ export const KOMODITAS_PRESETS = {
     masaPanenHari: 330,
     targetBobotGram: 600,
     padatTebarPerM3: 12,
+    hargaPasaranRataRata: 50000,
   },
   patin: {
     id: 'patin',
@@ -52,6 +57,7 @@ export const KOMODITAS_PRESETS = {
     masaPanenHari: 165,
     targetBobotGram: 600,
     padatTebarPerM3: 25,
+    hargaPasaranRataRata: 25000,
   },
   lobster_red_claw: {
     id: 'lobster_red_claw',
@@ -63,6 +69,7 @@ export const KOMODITAS_PRESETS = {
     targetBobotGram: 90,
     padatTebarPerM3: 20,
     bisaMolting: true,
+    hargaPasaranRataRata: 140000,
   },
   lobster_blue_claw: {
     id: 'lobster_blue_claw',
@@ -73,6 +80,7 @@ export const KOMODITAS_PRESETS = {
     targetBobotGram: 80,
     padatTebarPerM3: 15,
     bisaMolting: true,
+    hargaPasaranRataRata: 140000,
   },
   lobster_papuan: {
     id: 'lobster_papuan',
@@ -83,6 +91,7 @@ export const KOMODITAS_PRESETS = {
     targetBobotGram: 75,
     padatTebarPerM3: 15,
     bisaMolting: true,
+    hargaPasaranRataRata: 140000,
   },
   custom: {
     id: 'custom',
@@ -93,6 +102,7 @@ export const KOMODITAS_PRESETS = {
     masaPanenHari: null,
     targetBobotGram: null,
     padatTebarPerM3: null,
+    hargaPasaranRataRata: null,
   },
 };
 

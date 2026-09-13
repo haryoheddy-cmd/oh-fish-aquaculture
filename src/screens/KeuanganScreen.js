@@ -6,6 +6,7 @@ import { Plus, MessageCircle, CircleCheck, FileDown } from 'lucide-react-native'
 
 import FormModal, { FormInput, FormChoice } from '../components/FormModal';
 import StatusIndicator from '../components/StatusIndicator';
+import HargaJualWidget from '../components/HargaJualWidget';
 import { COLORS, SPACING } from '../theme';
 import { formatRupiah, formatTanggal, todayISODate, toNumber } from '../utils/format';
 import { hitungHPPPerKg, hitungBEPHargaPerKg, hitungLabaRugiBersih } from '../utils/leleCalculators';
@@ -351,6 +352,12 @@ export default function KeuanganScreen() {
                     <BarBanding label="HPP (Modal per Kg)" value={kalkulatorHasil.hpp} max={Math.max(kalkulatorHasil.hargaJualRataRata, kalkulatorHasil.hpp)} color={COLORS.warning} />
                   </View>
                 )}
+
+                <HargaJualWidget
+                  totalModal={kalkulatorHasil.totalBiayaProduksi}
+                  totalBiomassKg={kalkulatorHasil.totalKgPanen}
+                  jenisKomoditas={kolamList.find((k) => k.id === kalkulatorKolamId)?.jenis_komoditas}
+                />
               </View>
             )}
           </View>

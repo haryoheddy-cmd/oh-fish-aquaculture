@@ -463,3 +463,38 @@ export function hitungPakanAlternatif({
     penghematanBulanan: penghematanHarian * 30,
   };
 }
+
+// ---------- Kalkulator analisis harga jual & pasaran ----------
+
+const MARGIN_HARGA_MINIMUM = 0.2;
+const MARGIN_HARGA_IDEAL = 0.4;
+
+/**
+ * Rekomendasi harga jual berdasarkan modal produksi (biaya pakan + biaya lain)
+ * dan total biomassa/hasil panen (kg). BEP per kg dipakai sebagai dasar margin:
+ * Harga Minimum Anti-Rugi = BEP + 20%, Harga Jual Ideal = BEP + 40%.
+ * Benchmark harga pasaran diambil dari preset jenisKomoditas bila tersedia.
+ */
+export function hitungRekomendasiHargaJual(totalModal, totalBiomassKg, jenisKomoditas = null) {
+  const bepPerKg = hitungHPPPerKg(totalModal, totalBiomassKg);
+  const preset = jenisKomoditas ? getKomoditasPreset(jenisKomoditas) : null;
+
+  return {
+    bepPerKg,
+    hargaMinimumAntiRugi: bepPerKg != null ? bepPerKg * (1 + MARGIN_HARGA_MINIMUM) : null,
+    hargaJualIdeal: bepPerKg != null ? bepPerKg * (1 + MARGIN_HARGA_IDEAL) : null,
+    benchmarkPasaranPerKg: preset?.hargaPasaranRataRata ?? null,
+  };
+}
+
+/**
+ * Status posisi harga pasaran terhadap analisis BEP/harga ideal:
+ * 'rugi' (pasaran < BEP), 'untung_tinggi' (pasaran > harga ideal),
+ * selebihnya 'margin_tipis'. Null bila data belum cukup.
+ */
+export function tentukanStatusHargaPasaran(hargaPasaran, { bepPerKg, hargaJualIdeal } = {}) {
+  if (hargaPasaran == null || bepPerKg == null) return null;
+  if (hargaPasaran < bepPerKg) return 'rugi';
+  if (hargaJualIdeal != null && hargaPasaran > hargaJualIdeal) return 'untung_tinggi';
+  return 'margin_tipis';
+}
