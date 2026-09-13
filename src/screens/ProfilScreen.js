@@ -16,7 +16,7 @@ const APP_VERSION = '1.0.0';
 async function pickAndPersistProfilePhoto() {
   const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!permission.granted) {
-    Alert.alert('Izin Diperlukan', 'Mister Lele butuh akses galeri untuk memilih foto profil.');
+    Alert.alert('Izin Diperlukan', 'OH F!SH! butuh akses galeri untuk memilih foto profil.');
     return null;
   }
 
@@ -139,7 +139,7 @@ export default function ProfilScreen() {
           <View style={styles.appIconWrap}>
             <Fish size={28} color={COLORS.primary} />
           </View>
-          <Text style={styles.appName}>Mister Lele</Text>
+          <Text style={styles.appName}>OH F!SH!</Text>
           <Text style={styles.appTagline}>Aplikasi manajemen budidaya lele & ikan air tawar</Text>
         </View>
 
@@ -151,8 +151,8 @@ export default function ProfilScreen() {
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Mister Lele v{APP_VERSION}</Text>
-          <Text style={styles.footerText}>Created & Designed by Haryo Heddy N.</Text>
+          <Text style={styles.footerText}>OH F!SH! v{APP_VERSION}</Text>
+          <Text style={styles.footerText}>Designed & Developed by Haryo Heddy N.</Text>
         </View>
       </ScrollView>
     </View>

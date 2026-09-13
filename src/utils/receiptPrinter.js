@@ -68,7 +68,7 @@ export function buildStrukHtml(data) {
         <div class="receipt">
           <div class="logo-row">
             <div class="logo-mark">🐟</div>
-            <h1>${escapeHtml(namaPeternakan || 'Mister Lele')}</h1>
+            <h1>${escapeHtml(namaPeternakan || 'OH F!SH!')}</h1>
             <div class="muted">Struk ${escapeHtml(jenisTransaksi)}</div>
           </div>
 
@@ -87,8 +87,8 @@ export function buildStrukHtml(data) {
           <div class="total-row"><span>TOTAL</span><span>${formatRupiah(total)}</span></div>
 
           <div class="footer">
-            Dicetak melalui Mister Lele App<br/>
-            Developed by Haryo Heddy N.
+            Dicetak via OH F!SH! App<br/>
+            Designed &amp; Developed by Haryo Heddy N.
           </div>
         </div>
       </body>
@@ -144,7 +144,7 @@ export function buildStrukEscPosText(data) {
   const { jenisTransaksi, namaPeternakan, namaPihak, tanggal, items, catatan, total } = data;
 
   const baris = [];
-  baris.push(tengah(namaPeternakan || 'Mister Lele'));
+  baris.push(tengah(namaPeternakan || 'OH F!SH!'));
   baris.push(tengah(`Struk ${jenisTransaksi}`));
   baris.push(garis());
   baris.push(rataKiriKanan('Tanggal', formatTanggal(tanggal)));
@@ -165,7 +165,7 @@ export function buildStrukEscPosText(data) {
   baris.push(garis());
   baris.push(rataKiriKanan('TOTAL', formatRupiah(total)));
   baris.push(garis());
-  baris.push(tengah('Developed by Haryo Heddy N.'));
+  baris.push(tengah('Designed & Developed by Haryo Heddy N.'));
 
   const isiStruk = baris.join('\n');
   return `${ESC_INIT}${ESC_BOLD_ON}${isiStruk.split('\n')[0]}\n${ESC_BOLD_OFF}${isiStruk.split('\n').slice(1).join('\n')}${ESC_FEED_CUT}`;

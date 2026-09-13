@@ -82,7 +82,7 @@ async function kumpulkanDataLaporan() {
 
 export async function buildLaporanBulananHtml() {
   const data = await kumpulkanDataLaporan();
-  const namaPeternakan = data.profil?.nama_peternakan || data.profil?.nama_panggilan || 'Peternakan Mister Lele';
+  const namaPeternakan = data.profil?.nama_peternakan || data.profil?.nama_panggilan || 'Peternakan OH F!SH!';
 
   const barisKolam = data.summaries
     .map(
@@ -170,7 +170,7 @@ export async function buildLaporanBulananHtml() {
         </div>
 
         <div class="footer">
-          Dibuat melalui Mister Lele App • Developed by Haryo Heddy N.<br/>
+          Dibuat via OH F!SH! App • Designed &amp; Developed by Haryo Heddy N.<br/>
           Dicetak pada ${formatTanggal(todayISODate())}
         </div>
       </body>

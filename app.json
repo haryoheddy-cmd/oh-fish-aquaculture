@@ -1,13 +1,14 @@
 {
   "expo": {
-    "name": "MisterLele",
-    "slug": "haryo-heddy",
+    "name": "OH F!SH!",
+    "slug": "oh-fish",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.haryo.ohfish"
     },
     "android": {
       "adaptiveIcon": {
@@ -15,7 +16,8 @@
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
-      }
+      },
+      "package": "com.haryo.ohfish"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -24,7 +26,7 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Mister Lele butuh akses galeri untuk memilih foto profil kamu."
+          "photosPermission": "OH F!SH! butuh akses galeri untuk memilih foto profil kamu."
         }
       ],
       "expo-file-system"

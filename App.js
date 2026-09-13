@@ -40,7 +40,7 @@ function SplashScreen() {
   return (
     <View style={styles.center}>
       <ActivityIndicator size="large" color={COLORS.primary} />
-      <Text style={[styles.splashCredit, { bottom: insets.bottom + 24 }]}>Developed by Haryo Heddy N.</Text>
+      <Text style={[styles.splashCredit, { bottom: insets.bottom + 24 }]}>Designed & Developed by Haryo Heddy N.</Text>
     </View>
   );
 }

@@ -156,7 +156,7 @@ export default function VendorStokScreen() {
         setStrukData(
           buildStrukData({
             jenisTransaksi: 'Pembelian Stok',
-            namaPeternakan: profil?.nama_peternakan || profil?.nama_panggilan || 'Mister Lele',
+            namaPeternakan: profil?.nama_peternakan || profil?.nama_panggilan || 'OH F!SH!',
             namaPihak: 'Toko/Vendor',
             tanggal: todayISODate(),
             items: [

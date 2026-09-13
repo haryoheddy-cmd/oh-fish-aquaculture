@@ -59,7 +59,7 @@ function buildTagihanMessage(penjualan, kolamNama) {
     `${penjualan.total_kg} kg x ${formatRupiah(penjualan.harga_per_kg)}/kg = ${formatRupiah(total)}\n` +
     `Tanggal: ${formatTanggal(penjualan.tanggal)}\n` +
     `Status: ${penjualan.status_bayar === 'dp' ? 'DP, sisanya belum lunas' : 'Belum lunas'}\n\n` +
-    `Mohon konfirmasi pembayarannya ya. Terima kasih! 🙏 - Mister Lele`
+    `Mohon konfirmasi pembayarannya ya. Terima kasih! 🙏 - OH F!SH!`
   );
 }
 
@@ -180,7 +180,7 @@ export default function KeuanganScreen() {
       setStrukData(
         buildStrukData({
           jenisTransaksi: 'Penjualan',
-          namaPeternakan: profil?.nama_peternakan || profil?.nama_panggilan || 'Mister Lele',
+          namaPeternakan: profil?.nama_peternakan || profil?.nama_panggilan || 'OH F!SH!',
           namaPihak: form.namaPembeli || 'Pembeli',
           tanggal,
           catatan: `${kolamTerpilih.nama_kolam} · ${isPanenTotal ? 'Panen Total' : 'Panen Parsial'}`,
@@ -208,7 +208,7 @@ export default function KeuanganScreen() {
     setStrukData(
       buildStrukData({
         jenisTransaksi: 'Penjualan',
-        namaPeternakan: profil?.nama_peternakan || profil?.nama_panggilan || 'Mister Lele',
+        namaPeternakan: profil?.nama_peternakan || profil?.nama_panggilan || 'OH F!SH!',
         namaPihak: p.nama_pembeli || 'Pembeli',
         tanggal: p.tanggal,
         catatan: kolamNama(p.id_kolam),
