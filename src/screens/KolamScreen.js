@@ -27,6 +27,7 @@ import {
   Archive,
   ArchiveRestore,
   Trash2,
+  FlaskConical,
 } from 'lucide-react-native';
 
 import KolamCard from '../components/KolamCard';
@@ -34,6 +35,7 @@ import StatusIndicator from '../components/StatusIndicator';
 import FormModal, { FormInput, FormChoice } from '../components/FormModal';
 import KolamFormFields, { kolamFormToPayload, kolamToForm, KOLAM_FORM_DEFAULTS } from '../components/KolamFormFields';
 import PakanAlternatifCalc from '../components/PakanAlternatifCalc';
+import ProbiotikCalc from '../components/ProbiotikCalc';
 import HargaJualWidget from '../components/HargaJualWidget';
 import PakanFormModal from '../components/PakanFormModal';
 import WaterQualityModal from '../components/WaterQualityModal';
@@ -109,6 +111,7 @@ const ACTIONS = [
   { key: 'molting', label: 'Catat Molting', icon: Shell, color: COLORS.warning, lobsterOnly: true },
   { key: 'aerator', label: 'Log Aerator/Suhu', icon: Wind, color: COLORS.primary },
   { key: 'pakanAlternatif', label: 'Pakan Alternatif', icon: Bug, color: COLORS.success, standalone: true },
+  { key: 'probiotikCalc', label: 'Takaran Probiotik', icon: FlaskConical, color: COLORS.success, standalone: true },
 ];
 
 function buildActivityFeed(detail) {
@@ -735,8 +738,14 @@ function KolamDetail({
 }) {
   const insets = useSafeAreaInsets();
   const [pakanAlternatifVisible, setPakanAlternatifVisible] = useState(false);
+  const [probiotikCalcVisible, setProbiotikCalcVisible] = useState(false);
   const rekapHariIni = buildRekapHariIni(summary);
   const isArchived = summary.kolam.status === 'archived';
+
+  const STANDALONE_OPENERS = {
+    pakanAlternatif: () => setPakanAlternatifVisible(true),
+    probiotikCalc: () => setProbiotikCalcVisible(true),
+  };
 
   return (
     <View style={styles.screen}>
@@ -814,7 +823,7 @@ function KolamDetail({
             <Pressable
               key={action.key}
               style={styles.actionCard}
-              onPress={() => (action.standalone ? setPakanAlternatifVisible(true) : openModal(action.key))}
+              onPress={() => (action.standalone ? STANDALONE_OPENERS[action.key]?.() : openModal(action.key))}
             >
               <action.icon size={22} color={action.color} />
               <Text style={styles.actionLabel}>{action.label}</Text>
@@ -848,6 +857,13 @@ function KolamDetail({
         visible={pakanAlternatifVisible}
         onClose={() => setPakanAlternatifVisible(false)}
         initialTotalPakanKg={rekomendasiPakan.maxKg}
+      />
+      <ProbiotikCalc
+        visible={probiotikCalcVisible}
+        onClose={() => setProbiotikCalcVisible(false)}
+        initialVolumeAirM3={summary.specKolam?.volumeAirM3}
+        initialDebitAirLPerMenit={summary.kolam.debit_air}
+        initialLokasiKolam={summary.kolam.lokasi_kolam || 'Outdoor'}
       />
     </View>
   );

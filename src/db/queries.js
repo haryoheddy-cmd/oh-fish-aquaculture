@@ -19,13 +19,14 @@ export async function createKolam({
   jumlahTingkat = null,
   jumlahBoxPerTingkat = null,
   sistemAerasi = null,
+  lokasiKolam = 'Outdoor',
 }) {
   const db = getDatabase();
   const result = await db.runAsync(
     `INSERT INTO kolam
       (nama_kolam, target_panen_gram, status, panjang, lebar, diameter, tinggi, bentuk, tipe_budidaya, ketinggian_air, debit_air,
-       jenis_komoditas, is_bertingkat, jumlah_tingkat, jumlah_box_per_tingkat, sistem_aerasi)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       jenis_komoditas, is_bertingkat, jumlah_tingkat, jumlah_box_per_tingkat, sistem_aerasi, lokasi_kolam)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     namaKolam,
     targetPanenGram,
     status,
@@ -41,7 +42,8 @@ export async function createKolam({
     isBertingkat ? 1 : 0,
     jumlahTingkat,
     jumlahBoxPerTingkat,
-    sistemAerasi
+    sistemAerasi,
+    lokasiKolam
   );
   return result.lastInsertRowId;
 }
@@ -73,13 +75,14 @@ export async function updateKolam(id, {
   jumlahTingkat = null,
   jumlahBoxPerTingkat = null,
   sistemAerasi = null,
+  lokasiKolam = 'Outdoor',
 }) {
   const db = getDatabase();
   const result = await db.runAsync(
     `UPDATE kolam
      SET nama_kolam = ?, target_panen_gram = ?, status = ?,
          panjang = ?, lebar = ?, diameter = ?, tinggi = ?, bentuk = ?, tipe_budidaya = ?, ketinggian_air = ?, debit_air = ?,
-         jenis_komoditas = ?, is_bertingkat = ?, jumlah_tingkat = ?, jumlah_box_per_tingkat = ?, sistem_aerasi = ?
+         jenis_komoditas = ?, is_bertingkat = ?, jumlah_tingkat = ?, jumlah_box_per_tingkat = ?, sistem_aerasi = ?, lokasi_kolam = ?
      WHERE id = ?`,
     namaKolam,
     targetPanenGram,
@@ -97,6 +100,7 @@ export async function updateKolam(id, {
     jumlahTingkat,
     jumlahBoxPerTingkat,
     sistemAerasi,
+    lokasiKolam,
     id
   );
   return result.changes;

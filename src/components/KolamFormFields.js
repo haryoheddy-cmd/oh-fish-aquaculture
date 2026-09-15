@@ -22,6 +22,7 @@ export function kolamFormToPayload(form) {
     jumlahTingkat: isBertingkat && form.jumlahTingkat ? toNumber(form.jumlahTingkat) : null,
     jumlahBoxPerTingkat: isBertingkat && form.jumlahBoxPerTingkat ? toNumber(form.jumlahBoxPerTingkat) : null,
     sistemAerasi: isBertingkat ? form.sistemAerasi || null : null,
+    lokasiKolam: form.lokasiKolam || 'Outdoor',
   };
 }
 
@@ -42,6 +43,7 @@ export function kolamToForm(kolam) {
     jumlahTingkat: kolam.jumlah_tingkat != null ? String(kolam.jumlah_tingkat) : '',
     jumlahBoxPerTingkat: kolam.jumlah_box_per_tingkat != null ? String(kolam.jumlah_box_per_tingkat) : '',
     sistemAerasi: kolam.sistem_aerasi || 'Tanpa Aerator',
+    lokasiKolam: kolam.lokasi_kolam || 'Outdoor',
   };
 }
 
@@ -51,6 +53,7 @@ export const KOLAM_FORM_DEFAULTS = {
   jenisKomoditas: 'lele',
   isBertingkat: false,
   sistemAerasi: 'Tanpa Aerator',
+  lokasiKolam: 'Outdoor',
 };
 
 export default function KolamFormFields({ form, setForm }) {
@@ -111,6 +114,16 @@ export default function KolamFormFields({ form, setForm }) {
           { label: 'Kolam Tanah', value: 'Kolam Tanah' },
           { label: 'Terpal', value: 'Terpal' },
           { label: 'Beton', value: 'Beton' },
+        ]}
+      />
+      <FormChoice
+        label="Lokasi Kolam"
+        helperText="Berpengaruh ke pertumbuhan plankton alami, fluktuasi suhu, dan jadwal pemberian probiotik."
+        value={form.lokasiKolam}
+        onChange={set('lokasiKolam')}
+        options={[
+          { label: '☀️ Outdoor', value: 'Outdoor' },
+          { label: '🏠 Indoor', value: 'Indoor' },
         ]}
       />
       <FormInput

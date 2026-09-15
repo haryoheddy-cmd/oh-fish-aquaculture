@@ -87,7 +87,7 @@ export default function KolamCard({ summary, onPress, footer }) {
 
       {punyaSpesifikasi ? (
         <Text style={styles.specLine}>
-          {kolam.bentuk} • {kolam.tipe_budidaya}
+          {kolam.bentuk} • {kolam.tipe_budidaya} • {kolam.lokasi_kolam === 'Indoor' ? '🏠 Indoor' : '☀️ Outdoor'}
         </Text>
       ) : null}
 

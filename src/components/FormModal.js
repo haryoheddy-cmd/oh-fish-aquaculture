@@ -85,9 +85,9 @@ export function FormInput({ label, helperText, onSubmitEditing, style, ...textIn
   );
 }
 
-export function FormChoice({ label, options, value, onChange }) {
+export function FormChoice({ label, helperText, options, value, onChange }) {
   return (
-    <FormField label={label}>
+    <FormField label={label} helperText={helperText}>
       <View style={styles.choiceRow}>
         {options.map((opt) => {
           const selected = opt.value === value;

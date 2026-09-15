@@ -545,6 +545,79 @@ export function analisaKualitasAir({ phAir = null, suhu = null, kejernihan = nul
   return { level, label, alerts, phAir, suhu, kejernihan };
 }
 
+// ---------- Kalkulator takaran probiotik (fermentasi molase & ragi) ----------
+
+// Resep dasar (lihat modul Tips "Resep Fermentasi Molase & Ragi"): 1 liter
+// molase + 5 gram ragi + 10 liter air -> ±11 liter larutan starter siap pakai.
+const PROBIOTIK_RESEP_PER_LITER_STARTER = {
+  molaseMl: 1000 / 11,
+  ragiGram: 5 / 11,
+};
+
+// Dosis dasar larutan starter untuk kolam statis/minim pergantian air:
+// ±1 liter larutan per 1.5 m3 air kolam.
+const PROBIOTIK_DOSIS_DASAR_LITER_PER_M3 = 1 / 1.5;
+
+/**
+ * Rekomendasi takaran probiotik fermentasi molase & ragi, disesuaikan dengan
+ * volume air kolam, debit air (tingkat pergantian air), dan lokasi kolam.
+ *
+ * - Debit air tinggi -> larutan starter lebih cepat "terbuang" sebelum bakteri
+ *   sempat berkembang biak, jadi dosis dinaikkan & disarankan menjeda aliran
+ *   air masuk beberapa jam setelah aplikasi.
+ * - Kolam Indoor minim sinar matahari -> plankton alami (air hijau) sulit
+ *   tumbuh, jadi pemberian probiotik heterotrof disarankan lebih sering
+ *   dibanding kolam Outdoor yang terbantu fotosintesis alami tapi lebih
+ *   rawan tergerus hujan/fluktuasi suhu.
+ *
+ * Null bila volumeAirM3 belum tersedia (misal spesifikasi kolam belum diisi).
+ */
+export function hitungRekomendasiProbiotik({ volumeAirM3, debitAirLPerMenit = null, lokasiKolam = 'Outdoor' }) {
+  if (!volumeAirM3 || volumeAirM3 <= 0) return null;
+
+  let dosisLiter = volumeAirM3 * PROBIOTIK_DOSIS_DASAR_LITER_PER_M3;
+
+  let faktorDebit = 1;
+  let turnoverJam = null;
+  let catatanDebit =
+    'Kolam statis/minim pergantian air — dosis dasar sudah cukup, bakteri punya waktu berkembang biak.';
+  if (debitAirLPerMenit > 0) {
+    turnoverJam = (volumeAirM3 * 1000) / (debitAirLPerMenit * 60);
+    if (turnoverJam < 6) {
+      faktorDebit = 1.5;
+      catatanDebit = `Pergantian air cepat (≈${turnoverJam.toFixed(1)} jam per siklus) — naikkan dosis 50% dan matikan aliran air masuk 2-3 jam setelah aplikasi supaya bakteri sempat berkembang sebelum terbuang.`;
+    } else if (turnoverJam < 24) {
+      faktorDebit = 1.25;
+      catatanDebit = `Pergantian air sedang (≈${turnoverJam.toFixed(1)} jam per siklus) — naikkan dosis 25% dari dosis dasar.`;
+    } else {
+      catatanDebit = `Pergantian air lambat (≈${turnoverJam.toFixed(1)} jam per siklus) — dosis dasar sudah cukup.`;
+    }
+  }
+  dosisLiter *= faktorDebit;
+
+  const isIndoor = lokasiKolam === 'Indoor';
+  const intervalHari = isIndoor ? 3 : 5;
+  const catatanLokasi = isIndoor
+    ? 'Kolam Indoor minim sinar matahari sehingga plankton alami (air hijau) sulit tumbuh — andalkan probiotik heterotrof, beri lebih sering (tiap 3 hari), dan jaga aerasi ekstra karena tidak ada bantuan oksigen dari fotosintesis alami di siang hari.'
+    : 'Kolam Outdoor kena sinar matahari langsung sehingga plankton alami bisa tumbuh membantu, tapi lebih rawan fluktuasi suhu & pH terutama saat hujan — beri probiotik tiap 5 hari, dan tambahan dosis setelah hujan deras.';
+
+  return {
+    volumeAirM3,
+    dosisLiter: Math.round(dosisLiter * 100) / 100,
+    bahan: {
+      molaseMl: Math.round(dosisLiter * PROBIOTIK_RESEP_PER_LITER_STARTER.molaseMl),
+      ragiGram: Math.round(dosisLiter * PROBIOTIK_RESEP_PER_LITER_STARTER.ragiGram * 10) / 10,
+      airMl: Math.round(dosisLiter * 1000 - dosisLiter * PROBIOTIK_RESEP_PER_LITER_STARTER.molaseMl),
+    },
+    faktorDebit,
+    turnoverJam,
+    catatanDebit,
+    intervalHari,
+    isIndoor,
+    catatanLokasi,
+  };
+}
+
 /**
  * Status posisi harga pasaran terhadap analisis BEP/harga ideal:
  * 'rugi' (pasaran < BEP), 'untung_tinggi' (pasaran > harga ideal),

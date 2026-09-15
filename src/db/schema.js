@@ -23,7 +23,8 @@ CREATE TABLE IF NOT EXISTS kolam (
   is_bertingkat INTEGER NOT NULL DEFAULT 0 CHECK (is_bertingkat IN (0, 1)),
   jumlah_tingkat INTEGER,
   jumlah_box_per_tingkat INTEGER,
-  sistem_aerasi TEXT CHECK (sistem_aerasi IN ('Blower Sentral', 'Aerator per Box', 'Venturi', 'Tanpa Aerator'))
+  sistem_aerasi TEXT CHECK (sistem_aerasi IN ('Blower Sentral', 'Aerator per Box', 'Venturi', 'Tanpa Aerator')),
+  lokasi_kolam TEXT DEFAULT 'Outdoor' CHECK (lokasi_kolam IN ('Outdoor', 'Indoor'))
 );
 
 CREATE TABLE IF NOT EXISTS penjual_bibit (
@@ -236,6 +237,7 @@ const KOLAM_NEW_COLUMNS = [
     name: 'sistem_aerasi',
     ddl: "TEXT CHECK (sistem_aerasi IN ('Blower Sentral', 'Aerator per Box', 'Venturi', 'Tanpa Aerator'))",
   },
+  { name: 'lokasi_kolam', ddl: "TEXT DEFAULT 'Outdoor' CHECK (lokasi_kolam IN ('Outdoor', 'Indoor'))" },
 ];
 
 const AIR_LOG_NEW_COLUMNS = [
@@ -290,7 +292,8 @@ async function migrateKolamStatusArchived(db) {
         is_bertingkat INTEGER NOT NULL DEFAULT 0 CHECK (is_bertingkat IN (0, 1)),
         jumlah_tingkat INTEGER,
         jumlah_box_per_tingkat INTEGER,
-        sistem_aerasi TEXT CHECK (sistem_aerasi IN ('Blower Sentral', 'Aerator per Box', 'Venturi', 'Tanpa Aerator'))
+        sistem_aerasi TEXT CHECK (sistem_aerasi IN ('Blower Sentral', 'Aerator per Box', 'Venturi', 'Tanpa Aerator')),
+        lokasi_kolam TEXT DEFAULT 'Outdoor' CHECK (lokasi_kolam IN ('Outdoor', 'Indoor'))
       );
     `);
     await db.execAsync(`INSERT INTO kolam (${columnNames}) SELECT ${columnNames} FROM kolam_old_migration;`);
