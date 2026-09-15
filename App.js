@@ -18,13 +18,22 @@ import QuickAddFab from './src/components/QuickAddFab';
 
 const Tab = createBottomTabNavigator();
 
+// Splash screen ditampilkan minimal sekian lama supaya credit di bawahnya
+// sempat terbaca, meski initDatabase() sering selesai nyaris instan
+// (terutama setelah database pernah diinisialisasi sebelumnya di sesi JS yang sama).
+const MIN_SPLASH_DURATION_MS = 1200;
+
 export default function App() {
   const [isDbReady, setIsDbReady] = useState(false);
   const [dbError, setDbError] = useState(null);
 
   useEffect(() => {
+    const startedAt = Date.now();
     initDatabase()
-      .then(() => setIsDbReady(true))
+      .then(() => {
+        const sisaWaktu = Math.max(MIN_SPLASH_DURATION_MS - (Date.now() - startedAt), 0);
+        setTimeout(() => setIsDbReady(true), sisaWaktu);
+      })
       .catch((error) => setDbError(error));
   }, []);
 
