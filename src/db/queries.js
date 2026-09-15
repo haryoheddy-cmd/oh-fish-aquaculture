@@ -108,6 +108,19 @@ export async function deleteKolam(id) {
   return result.changes;
 }
 
+// Soft delete: kolam disembunyikan dari dashboard utama tapi riwayat tetap tersimpan.
+export async function archiveKolam(id) {
+  const db = getDatabase();
+  const result = await db.runAsync("UPDATE kolam SET status = 'archived' WHERE id = ?", id);
+  return result.changes;
+}
+
+export async function restoreKolam(id) {
+  const db = getDatabase();
+  const result = await db.runAsync("UPDATE kolam SET status = 'aktif' WHERE id = ?", id);
+  return result.changes;
+}
+
 // ---------- populasi_log ----------
 
 export async function createPopulasiLog({
@@ -782,6 +795,115 @@ export async function resolveWaterAlert(id) {
     "UPDATE water_alerts SET status = 'Resolved', waktu_resolved = ? WHERE id = ?",
     new Date().toISOString(),
     id
+  );
+  return result.changes;
+}
+
+// ---------- custom_tips ----------
+
+export async function getAllCustomTips() {
+  const db = getDatabase();
+  return db.getAllAsync('SELECT * FROM custom_tips ORDER BY created_at DESC');
+}
+
+export async function createCustomTip({ judul, kategori, sumber = null, isi }) {
+  const db = getDatabase();
+  const now = new Date().toISOString();
+  const result = await db.runAsync(
+    'INSERT INTO custom_tips (judul, kategori, sumber, isi, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+    judul,
+    kategori,
+    sumber,
+    isi,
+    now,
+    now
+  );
+  return result.lastInsertRowId;
+}
+
+export async function updateCustomTip(id, { judul, kategori, sumber = null, isi }) {
+  const db = getDatabase();
+  const result = await db.runAsync(
+    'UPDATE custom_tips SET judul = ?, kategori = ?, sumber = ?, isi = ?, updated_at = ? WHERE id = ?',
+    judul,
+    kategori,
+    sumber,
+    isi,
+    new Date().toISOString(),
+    id
+  );
+  return result.changes;
+}
+
+export async function deleteCustomTip(id) {
+  const db = getDatabase();
+  const result = await db.runAsync('DELETE FROM custom_tips WHERE id = ?', id);
+  await db.runAsync("DELETE FROM tip_favorites WHERE tip_type = 'custom' AND tip_id = ?", String(id));
+  return result.changes;
+}
+
+// ---------- quotes (Nasihat & Kutipan Peternak) ----------
+
+export async function getAllQuotes() {
+  const db = getDatabase();
+  return db.getAllAsync('SELECT * FROM quotes ORDER BY created_at DESC');
+}
+
+export async function createQuote({ kalimat, sumber = null }) {
+  const db = getDatabase();
+  const now = new Date().toISOString();
+  const result = await db.runAsync(
+    'INSERT INTO quotes (kalimat, sumber, created_at, updated_at) VALUES (?, ?, ?, ?)',
+    kalimat,
+    sumber,
+    now,
+    now
+  );
+  return result.lastInsertRowId;
+}
+
+export async function updateQuote(id, { kalimat, sumber = null }) {
+  const db = getDatabase();
+  const result = await db.runAsync(
+    'UPDATE quotes SET kalimat = ?, sumber = ?, updated_at = ? WHERE id = ?',
+    kalimat,
+    sumber,
+    new Date().toISOString(),
+    id
+  );
+  return result.changes;
+}
+
+export async function deleteQuote(id) {
+  const db = getDatabase();
+  const result = await db.runAsync('DELETE FROM quotes WHERE id = ?', id);
+  return result.changes;
+}
+
+// ---------- tip_favorites ----------
+
+export async function getAllTipFavorites() {
+  const db = getDatabase();
+  return db.getAllAsync('SELECT * FROM tip_favorites');
+}
+
+export async function addTipFavorite(tipType, tipId) {
+  const db = getDatabase();
+  const result = await db.runAsync(
+    'INSERT OR IGNORE INTO tip_favorites (tip_type, tip_id, created_at) VALUES (?, ?, ?)',
+    tipType,
+    String(tipId),
+    new Date().toISOString()
+  );
+  return result.changes;
+}
+
+export async function removeTipFavorite(tipType, tipId) {
+  const db = getDatabase();
+  const result = await db.runAsync(
+    'DELETE FROM tip_favorites WHERE tip_type = ? AND tip_id = ?',
+    tipType,
+    String(tipId)
   );
   return result.changes;
 }

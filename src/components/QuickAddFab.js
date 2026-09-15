@@ -38,7 +38,7 @@ export default function QuickAddFab() {
 
   const openSheet = async () => {
     const list = await getAllKolam();
-    setKolamList(list);
+    setKolamList(list.filter((k) => k.status !== 'archived'));
     setSheetVisible(true);
   };
 

@@ -4,7 +4,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import { House, Fish, Wallet, Warehouse, User } from 'lucide-react-native';
+import { House, Fish, Wallet, Warehouse, User, Lightbulb } from 'lucide-react-native';
 
 import { initDatabase } from './src/db/schema';
 import { COLORS } from './src/theme';
@@ -12,6 +12,7 @@ import HomeScreen from './src/screens/HomeScreen';
 import KolamScreen from './src/screens/KolamScreen';
 import KeuanganScreen from './src/screens/KeuanganScreen';
 import VendorStokScreen from './src/screens/VendorStokScreen';
+import TipsScreen from './src/screens/TipsScreen';
 import ProfilScreen from './src/screens/ProfilScreen';
 import QuickAddFab from './src/components/QuickAddFab';
 
@@ -93,6 +94,11 @@ function AppShell() {
             name="Stok & Vendor"
             component={VendorStokScreen}
             options={{ tabBarIcon: ({ color, size }) => <Warehouse color={color} size={size} /> }}
+          />
+          <Tab.Screen
+            name="Tips"
+            component={TipsScreen}
+            options={{ tabBarIcon: ({ color, size }) => <Lightbulb color={color} size={size} /> }}
           />
           <Tab.Screen
             name="Profil"

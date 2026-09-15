@@ -15,12 +15,10 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#1E90FF"
       },
-      "package": "com.haryo.ohfish",
+      "package": "com.ohfish.aquaculture",
       "permissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.READ_EXTERNAL_STORAGE",
@@ -38,7 +36,15 @@
           "photosPermission": "OH F!SH! butuh akses galeri untuk memilih foto profil kamu."
         }
       ],
-      "expo-file-system"
+      "expo-file-system",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#1E90FF"
+        }
+      ]
     ],
     "extra": {
       "eas": {

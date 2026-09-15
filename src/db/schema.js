@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS kolam (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   nama_kolam TEXT NOT NULL,
   target_panen_gram REAL,
-  status TEXT NOT NULL DEFAULT 'aktif' CHECK (status IN ('aktif', 'panen', 'kosong')),
+  status TEXT NOT NULL DEFAULT 'aktif' CHECK (status IN ('aktif', 'panen', 'kosong', 'archived')),
   panjang REAL,
   lebar REAL,
   diameter REAL,
@@ -180,6 +180,31 @@ CREATE TABLE IF NOT EXISTS water_alerts (
   waktu_resolved TEXT
 );
 
+CREATE TABLE IF NOT EXISTS custom_tips (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  judul TEXT NOT NULL,
+  kategori TEXT NOT NULL,
+  sumber TEXT,
+  isi TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS quotes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  kalimat TEXT NOT NULL,
+  sumber TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS tip_favorites (
+  tip_type TEXT NOT NULL CHECK (tip_type IN ('builtin', 'custom')),
+  tip_id TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  PRIMARY KEY (tip_type, tip_id)
+);
+
 CREATE INDEX IF NOT EXISTS idx_populasi_log_id_kolam ON populasi_log(id_kolam);
 CREATE INDEX IF NOT EXISTS idx_kematian_konsumsi_log_id_kolam ON kematian_konsumsi_log(id_kolam);
 CREATE INDEX IF NOT EXISTS idx_sampling_log_id_kolam ON sampling_log(id_kolam);
@@ -227,6 +252,58 @@ async function migrateTableColumns(db, table, columns) {
   }
 }
 
+/**
+ * SQLite tidak mendukung ALTER TABLE untuk mengubah CHECK constraint, jadi
+ * status kolam 'archived' (ditambahkan setelah rilis awal) butuh rebuild
+ * tabel kolam pada database lama yang constraint-nya belum memuat 'archived'.
+ */
+async function migrateKolamStatusArchived(db) {
+  const tableInfo = await db.getFirstAsync(
+    "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'kolam'"
+  );
+  if (!tableInfo || tableInfo.sql.includes('archived')) {
+    return;
+  }
+
+  const columns = await db.getAllAsync('PRAGMA table_info(kolam)');
+  const columnNames = columns.map((c) => c.name).join(', ');
+
+  await db.execAsync('PRAGMA foreign_keys = OFF;');
+  try {
+    await db.execAsync('BEGIN TRANSACTION;');
+    await db.execAsync('ALTER TABLE kolam RENAME TO kolam_old_migration;');
+    await db.execAsync(`
+      CREATE TABLE kolam (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nama_kolam TEXT NOT NULL,
+        target_panen_gram REAL,
+        status TEXT NOT NULL DEFAULT 'aktif' CHECK (status IN ('aktif', 'panen', 'kosong', 'archived')),
+        panjang REAL,
+        lebar REAL,
+        diameter REAL,
+        tinggi REAL,
+        bentuk TEXT CHECK (bentuk IN ('Bundar', 'Persegi')),
+        tipe_budidaya TEXT CHECK (tipe_budidaya IN ('Bioflok', 'Kolam Tanah', 'Terpal', 'Beton')),
+        ketinggian_air REAL,
+        debit_air REAL,
+        jenis_komoditas TEXT,
+        is_bertingkat INTEGER NOT NULL DEFAULT 0 CHECK (is_bertingkat IN (0, 1)),
+        jumlah_tingkat INTEGER,
+        jumlah_box_per_tingkat INTEGER,
+        sistem_aerasi TEXT CHECK (sistem_aerasi IN ('Blower Sentral', 'Aerator per Box', 'Venturi', 'Tanpa Aerator'))
+      );
+    `);
+    await db.execAsync(`INSERT INTO kolam (${columnNames}) SELECT ${columnNames} FROM kolam_old_migration;`);
+    await db.execAsync('DROP TABLE kolam_old_migration;');
+    await db.execAsync('COMMIT;');
+  } catch (error) {
+    await db.execAsync('ROLLBACK;');
+    throw error;
+  } finally {
+    await db.execAsync('PRAGMA foreign_keys = ON;');
+  }
+}
+
 let dbInstance = null;
 
 export async function initDatabase() {
@@ -238,6 +315,7 @@ export async function initDatabase() {
   await db.execAsync(CREATE_TABLES_SQL);
   await migrateTableColumns(db, 'kolam', KOLAM_NEW_COLUMNS);
   await migrateTableColumns(db, 'air_log', AIR_LOG_NEW_COLUMNS);
+  await migrateKolamStatusArchived(db);
 
   dbInstance = db;
   return dbInstance;

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -23,6 +24,9 @@ import {
   Shell,
   Wind,
   Bug,
+  Archive,
+  ArchiveRestore,
+  Trash2,
 } from 'lucide-react-native';
 
 import KolamCard from '../components/KolamCard';
@@ -44,6 +48,9 @@ import {
   getAllKolam,
   createKolam,
   updateKolam,
+  archiveKolam,
+  restoreKolam,
+  deleteKolam,
   createPopulasiLog,
   getPopulasiLogByKolam,
   updatePopulasiLog,
@@ -163,6 +170,7 @@ export default function KolamScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedKolamId, setSelectedKolamId] = useState(null);
   const [penjualBibitList, setPenjualBibitList] = useState([]);
+  const [kolamTab, setKolamTab] = useState('aktif');
 
   const [activeModal, setActiveModal] = useState(null);
   const [form, setForm] = useState({});
@@ -384,6 +392,63 @@ export default function KolamScreen() {
     emitDataChanged();
   };
 
+  const handleArchiveKolam = (kolam) => {
+    Alert.alert(
+      'Arsipkan Kolam',
+      `Kolam "${kolam.nama_kolam}" akan dipindahkan ke Kolam Diarsipkan dan tidak lagi tampil di dashboard utama. Seluruh riwayat pakan dan catatannya tetap tersimpan, dan kolam bisa diaktifkan kembali kapan saja.`,
+      [
+        { text: 'Batal', style: 'cancel' },
+        {
+          text: 'Arsipkan',
+          onPress: async () => {
+            await archiveKolam(kolam.id);
+            if (selectedKolamId === kolam.id) setSelectedKolamId(null);
+            await loadData();
+            emitDataChanged();
+          },
+        },
+      ]
+    );
+  };
+
+  const handleRestoreKolam = (kolam) => {
+    Alert.alert(
+      'Aktifkan Kembali Kolam',
+      `Kolam "${kolam.nama_kolam}" akan diaktifkan kembali dan muncul lagi di daftar Kolam Aktif.`,
+      [
+        { text: 'Batal', style: 'cancel' },
+        {
+          text: 'Aktifkan',
+          onPress: async () => {
+            await restoreKolam(kolam.id);
+            await loadData();
+            emitDataChanged();
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDeleteKolam = (kolam) => {
+    Alert.alert(
+      'Hapus Kolam Permanen',
+      `Semua data kolam "${kolam.nama_kolam}" beserta riwayat pakan, populasi, dan catatan lainnya akan dihapus permanen dan TIDAK BISA dikembalikan. Lanjutkan?`,
+      [
+        { text: 'Batal', style: 'cancel' },
+        {
+          text: 'Hapus Permanen',
+          style: 'destructive',
+          onPress: async () => {
+            await deleteKolam(kolam.id);
+            if (selectedKolamId === kolam.id) setSelectedKolamId(null);
+            await loadData();
+            emitDataChanged();
+          },
+        },
+      ]
+    );
+  };
+
   if (summaries === null) {
     return (
       <View style={styles.center}>
@@ -404,6 +469,9 @@ export default function KolamScreen() {
         onBack={() => setSelectedKolamId(null)}
         openModal={openModal}
         onResolveAlert={handleResolveAlert}
+        onArchive={handleArchiveKolam}
+        onRestore={handleRestoreKolam}
+        onDelete={handleDeleteKolam}
         refreshing={refreshing}
         onRefresh={onRefresh}
       >
@@ -482,7 +550,7 @@ export default function KolamScreen() {
           kolamTujuanOptions={[
             { label: 'Sortir di Kolam Ini (Tidak Pindah)', value: null },
             ...summaries
-              .filter((s) => s.kolam.id !== selected.kolam.id)
+              .filter((s) => s.kolam.id !== selected.kolam.id && s.kolam.status !== 'archived')
               .map((s) => ({ label: s.kolam.nama_kolam, value: s.kolam.id })),
           ]}
         />
@@ -562,6 +630,10 @@ export default function KolamScreen() {
     );
   }
 
+  const kolamAktifList = summaries.filter((s) => s.kolam.status !== 'archived');
+  const kolamArsipList = summaries.filter((s) => s.kolam.status === 'archived');
+  const kolamTampil = kolamTab === 'aktif' ? kolamAktifList : kolamArsipList;
+
   return (
     <View style={styles.screen}>
       <ScrollView
@@ -579,12 +651,58 @@ export default function KolamScreen() {
           </Pressable>
         </View>
 
-        {summaries.length === 0 && (
-          <Text style={styles.emptyText}>Belum ada kolam. Yuk tambahkan kolam pertamamu!</Text>
+        <View style={styles.tabRow}>
+          <Pressable
+            style={[styles.tabButton, kolamTab === 'aktif' && styles.tabButtonActive]}
+            onPress={() => setKolamTab('aktif')}
+          >
+            <Text style={[styles.tabButtonText, kolamTab === 'aktif' && styles.tabButtonTextActive]}>
+              Kolam Aktif ({kolamAktifList.length})
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.tabButton, kolamTab === 'archived' && styles.tabButtonActive]}
+            onPress={() => setKolamTab('archived')}
+          >
+            <Text style={[styles.tabButtonText, kolamTab === 'archived' && styles.tabButtonTextActive]}>
+              Kolam Diarsipkan ({kolamArsipList.length})
+            </Text>
+          </Pressable>
+        </View>
+
+        {kolamTampil.length === 0 && (
+          <Text style={styles.emptyText}>
+            {kolamTab === 'aktif'
+              ? 'Belum ada kolam aktif. Yuk tambahkan kolam pertamamu!'
+              : 'Belum ada kolam yang diarsipkan.'}
+          </Text>
         )}
 
-        {summaries.map((s) => (
-          <KolamCard key={s.kolam.id} summary={s} onPress={() => setSelectedKolamId(s.kolam.id)} />
+        {kolamTampil.map((s) => (
+          <KolamCard
+            key={s.kolam.id}
+            summary={s}
+            onPress={() => setSelectedKolamId(s.kolam.id)}
+            footer={
+              <View style={styles.cardActionsRow}>
+                {kolamTab === 'aktif' ? (
+                  <Pressable style={styles.cardActionButton} onPress={() => handleArchiveKolam(s.kolam)}>
+                    <Archive size={16} color={COLORS.warning} />
+                    <Text style={[styles.cardActionText, { color: COLORS.warning }]}>Arsipkan</Text>
+                  </Pressable>
+                ) : (
+                  <Pressable style={styles.cardActionButton} onPress={() => handleRestoreKolam(s.kolam)}>
+                    <ArchiveRestore size={16} color={COLORS.primary} />
+                    <Text style={[styles.cardActionText, { color: COLORS.primary }]}>Aktifkan</Text>
+                  </Pressable>
+                )}
+                <Pressable style={styles.cardActionButton} onPress={() => handleDeleteKolam(s.kolam)}>
+                  <Trash2 size={16} color={COLORS.danger} />
+                  <Text style={[styles.cardActionText, { color: COLORS.danger }]}>Hapus Permanen</Text>
+                </Pressable>
+              </View>
+            }
+          />
         ))}
       </ScrollView>
 
@@ -608,6 +726,9 @@ function KolamDetail({
   onBack,
   openModal,
   onResolveAlert,
+  onArchive,
+  onRestore,
+  onDelete,
   refreshing,
   onRefresh,
   children,
@@ -615,6 +736,7 @@ function KolamDetail({
   const insets = useSafeAreaInsets();
   const [pakanAlternatifVisible, setPakanAlternatifVisible] = useState(false);
   const rekapHariIni = buildRekapHariIni(summary);
+  const isArchived = summary.kolam.status === 'archived';
 
   return (
     <View style={styles.screen}>
@@ -630,10 +752,27 @@ function KolamDetail({
             <ArrowLeft size={18} color={COLORS.primary} />
             <Text style={styles.backText}>Semua Kolam</Text>
           </Pressable>
-          <Pressable style={styles.editLink} onPress={() => openModal('editKolam', summary.kolam)}>
-            <Pencil size={16} color={COLORS.muted} />
-            <Text style={styles.editText}>Ubah</Text>
-          </Pressable>
+          <View style={styles.detailActionsRow}>
+            <Pressable style={styles.editLink} onPress={() => openModal('editKolam', summary.kolam)}>
+              <Pencil size={16} color={COLORS.muted} />
+              <Text style={styles.editText}>Ubah</Text>
+            </Pressable>
+            {isArchived ? (
+              <Pressable style={styles.editLink} onPress={() => onRestore(summary.kolam)}>
+                <ArchiveRestore size={16} color={COLORS.primary} />
+                <Text style={[styles.editText, { color: COLORS.primary }]}>Aktifkan</Text>
+              </Pressable>
+            ) : (
+              <Pressable style={styles.editLink} onPress={() => onArchive(summary.kolam)}>
+                <Archive size={16} color={COLORS.warning} />
+                <Text style={[styles.editText, { color: COLORS.warning }]}>Arsipkan</Text>
+              </Pressable>
+            )}
+            <Pressable style={styles.editLink} onPress={() => onDelete(summary.kolam)}>
+              <Trash2 size={16} color={COLORS.danger} />
+              <Text style={[styles.editText, { color: COLORS.danger }]}>Hapus</Text>
+            </Pressable>
+          </View>
         </View>
 
         <KolamCard summary={summary} />
@@ -757,6 +896,44 @@ const styles = StyleSheet.create({
     color: COLORS.muted,
     fontSize: 14,
   },
+  tabRow: {
+    flexDirection: 'row',
+    backgroundColor: COLORS.card,
+    borderRadius: 999,
+    padding: 4,
+    marginBottom: SPACING.lg,
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: SPACING.sm,
+    borderRadius: 999,
+    alignItems: 'center',
+  },
+  tabButtonActive: {
+    backgroundColor: COLORS.primary,
+  },
+  tabButtonText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.muted,
+  },
+  tabButtonTextActive: {
+    color: '#FFFFFF',
+  },
+  cardActionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: SPACING.md,
+  },
+  cardActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  cardActionText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
   backRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -771,6 +948,10 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     fontWeight: '700',
     marginLeft: 6,
+  },
+  detailActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   editLink: {
     flexDirection: 'row',

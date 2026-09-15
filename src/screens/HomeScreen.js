@@ -195,7 +195,7 @@ export default function HomeScreen() {
   };
 
   const alerts = [];
-  (summaries || []).forEach((s) => {
+  (summaries || []).filter((s) => s.kolam.status !== 'archived').forEach((s) => {
     if (s.kematianAlert?.isAlert) {
       alerts.push({ key: `mati-${s.kolam.id}`, level: 'bahaya', text: `${s.kolam.nama_kolam}: ${s.kematianAlert.pesan}` });
     }
@@ -222,6 +222,8 @@ export default function HomeScreen() {
       </View>
     );
   }
+
+  const kolamAktifSummaries = summaries.filter((s) => s.kolam.status !== 'archived');
 
   return (
     <View style={styles.screen}>
@@ -315,10 +317,10 @@ export default function HomeScreen() {
         )}
 
         <Text style={styles.sectionTitle}>Kolam Kamu</Text>
-        {summaries.length === 0 && (
+        {kolamAktifSummaries.length === 0 && (
           <Text style={styles.emptyText}>Belum ada kolam. Tambahkan dari tab "Kolam & Pakan".</Text>
         )}
-        {summaries.map((s) => (
+        {kolamAktifSummaries.map((s) => (
           <View key={s.kolam.id}>
             <KolamCard
               summary={s}

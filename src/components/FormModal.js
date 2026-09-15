@@ -68,11 +68,11 @@ export function FormField({ label, helperText, children }) {
   );
 }
 
-export function FormInput({ label, helperText, onSubmitEditing, ...textInputProps }) {
+export function FormInput({ label, helperText, onSubmitEditing, style, ...textInputProps }) {
   return (
     <FormField label={label} helperText={helperText}>
       <TextInput
-        style={styles.input}
+        style={[styles.input, style]}
         placeholderTextColor="#9CA3AF"
         returnKeyType="done"
         onSubmitEditing={(e) => {
