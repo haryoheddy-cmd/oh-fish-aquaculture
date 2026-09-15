@@ -41,7 +41,11 @@ function SplashScreen() {
   return (
     <View style={styles.center}>
       <ActivityIndicator size="large" color={COLORS.primary} />
-      <Text style={[styles.splashCredit, { bottom: insets.bottom + 24 }]}>Designed & Developed by Haryo Heddy N.</Text>
+      <View style={[styles.creditContainer, { bottom: 30 + insets.bottom }]}>
+        <Text style={styles.creditDeveloper}>Developed by Haryo Heddy Nugroho</Text>
+        <Text style={styles.creditTagline}>Smart Aquaculture Solution</Text>
+        <Text style={styles.creditVersion}>v1.0.0</Text>
+      </View>
     </View>
   );
 }
@@ -127,14 +131,27 @@ const styles = StyleSheet.create({
     color: COLORS.danger,
     textAlign: 'center',
   },
-  splashCredit: {
+  creditContainer: {
     position: 'absolute',
     left: 0,
     right: 0,
-    textAlign: 'center',
-    fontSize: 12,
-    color: COLORS.muted,
-    opacity: 0.6,
+    alignItems: 'center',
+  },
+  creditDeveloper: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#2D3748',
+  },
+  creditTagline: {
+    fontSize: 11,
+    fontStyle: 'italic',
+    color: '#718096',
+    marginVertical: 2,
+  },
+  creditVersion: {
+    fontSize: 10,
+    fontWeight: '400',
+    color: '#A0AEC0',
   },
   tabBar: {
     height: 64,
