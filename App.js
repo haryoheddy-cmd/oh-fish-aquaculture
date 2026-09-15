@@ -3,7 +3,7 @@ import { NavigationContainer, useNavigationContainerRef } from '@react-navigatio
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, StyleSheet, Text, View } from 'react-native';
 import { House, Fish, Wallet, Warehouse, User, Lightbulb } from 'lucide-react-native';
 
 import { initDatabase } from './src/db/schema';
@@ -22,6 +22,10 @@ const Tab = createBottomTabNavigator();
 // sempat terbaca, meski initDatabase() sering selesai nyaris instan
 // (terutama setelah database pernah diinisialisasi sebelumnya di sesi JS yang sama).
 const MIN_SPLASH_DURATION_MS = 1200;
+
+// Harus sama dengan expo.plugins["expo-splash-screen"].backgroundColor di app.json,
+// supaya transisi dari splash native ke layar loading JS ini terlihat menyatu (tanpa "kedip" warna).
+const SPLASH_BACKGROUND_COLOR = '#1E90FF';
 
 export default function App() {
   const [isDbReady, setIsDbReady] = useState(false);
@@ -46,15 +50,15 @@ export default function App() {
 }
 
 function SplashScreen() {
-  const insets = useSafeAreaInsets();
   return (
-    <View style={styles.center}>
-      <ActivityIndicator size="large" color={COLORS.primary} />
-      <View style={[styles.creditContainer, { bottom: 30 + insets.bottom }]}>
+    <View style={styles.splashScreen}>
+      <Image source={require('./assets/icon.png')} style={styles.splashLogo} resizeMode="contain" />
+      <View style={styles.creditContainer}>
         <Text style={styles.creditDeveloper}>Developed by Haryo Heddy Nugroho</Text>
         <Text style={styles.creditTagline}>Smart Aquaculture Solution</Text>
         <Text style={styles.creditVersion}>v1.0.0</Text>
       </View>
+      <ActivityIndicator size="small" color="rgba(255, 255, 255, 0.7)" style={styles.splashSpinner} />
     </View>
   );
 }
@@ -140,27 +144,39 @@ const styles = StyleSheet.create({
     color: COLORS.danger,
     textAlign: 'center',
   },
+  splashScreen: {
+    flex: 1,
+    backgroundColor: SPLASH_BACKGROUND_COLOR,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  splashLogo: {
+    width: 140,
+    height: 140,
+    marginBottom: 20,
+  },
+  splashSpinner: {
+    marginTop: 28,
+  },
   creditContainer: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
     alignItems: 'center',
   },
   creditDeveloper: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#2D3748',
+    color: '#FFFFFF',
   },
   creditTagline: {
     fontSize: 11,
     fontStyle: 'italic',
-    color: '#718096',
+    color: 'rgba(255, 255, 255, 0.85)',
     marginVertical: 2,
   },
   creditVersion: {
     fontSize: 10,
     fontWeight: '400',
-    color: '#A0AEC0',
+    color: 'rgba(255, 255, 255, 0.6)',
   },
   tabBar: {
     height: 64,
