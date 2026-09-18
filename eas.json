@@ -12,6 +12,9 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "NPM_CONFIG_ALLOW_SCRIPTS": "true"
       }
     },
     "production": {
